@@ -419,6 +419,8 @@ docker从基础镜像运行一个容器 -> 执行一条指令, 并对容器做�
 
 - FROM     基础镜像, 当前镜像是基于什么镜像
 
+  - Base镜像(scratch)
+
 - MAINTAINER   镜像维护者的姓名, 邮箱
 
 - RUN   容器构建需要的命令  
@@ -446,6 +448,18 @@ docker从基础镜像运行一个容器 -> 执行一条指令, 并对容器做�
 - ENTRYPOINT  指定容器启动时, 要执行的命令, 可以有多个, 不会被替换
 
 - ONBUILD  构建一个被继承的镜像触发的指令,  父镜像被子镜像继承后, 父镜像的ONBUILD触发
+
+```
+# 例 创建带有vim的镜像
+
+FROM centos
+RUN yum -y install vim
+RUN yum -y install net-tools
+
+EXPOSE 80
+```
+
+
 
 #### 数据卷容器
 
