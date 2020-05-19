@@ -1,0 +1,760 @@
+# SpringBoot
+
+### 配置
+
+```yml
+server:
+  port: 8001  # 端口
+spring:
+  application:
+    name: xxx # 项目名
+```
+
+#### maven
+
+```
+idea默认的maven的settings.xml的目录在idea的安装目录下
+idea/plugins/maven/lib/maven3/conf/settings.xml
+```
+
+```
+#### 往maven添加jar包
+
+- mvn install:install-file -DgroupId=energycontrol -DartifactId=energycontrol-jdk -Dversion=1.0 -Dpackaging=jar -Dfile=D:\work\¹¤×÷ÎÄ¼þ\energycontrol-jdk-1.0.jar
+```
+
+
+
+### Banner
+
+```
+在resources文件夹下, 放置一个自定义的banner.txt文件
+字符画生成网址
+http://www.network-science.de/ascii/
+```
+
+### Swagger
+
+Swagger用于生成api接口文档, 并可在线测试接口
+
+#### 添加依赖
+
+```xml
+<dependency>
+     <groupId>io.springfox</groupId>
+     <artifactId>springfox-swagger2</artifactId>
+     <version>2.9.2</version>
+</dependency>
+<dependency>
+     <groupId>io.springfox</groupId>
+     <artifactId>springfox-swagger-ui</artifactId>
+     <version>2.9.2</version>
+</dependency>
+```
+
+#### 添加配置类
+
+```java
+~ config.SwaggerConfig.java
+
+@Configuration
+@EnableSwagger2
+public class SwaggerConfig {
+
+    @Bean
+    public Docket createResultApi(){
+        return new Docket(DocumentationType.SWAGGER_2).apiInfo(apiInfo()).select().apis(RequestHandlerSelectors.any()).paths(PathSelectors.any()).build();
+    }
+    
+    private ApiInfo apiInfo(){
+        return new ApiInfoBuilder().build();
+    }
+}
+```
+
+#### 使用
+
+```
+项目启动后,访问
+启动路径/swagger-ui.html
+```
+
+### log4j
+
+#### 添加依赖
+
+```xml
+<!-- log4j -->
+<dependency>
+    <groupId>log4j</groupId>
+    <artifactId>log4j</artifactId>
+    <version>1.2.17</version>
+</dependency>
+```
+
+#### 添加配置文件
+
+```properties
+~ resources/log4j.properties
+
+### set log ###
+log4j.rootLogger = INFO, console, infoFile, errorFile
+LocationInfo = true
+
+### 配置输出到控制台 ###
+log4j.appender.console = org.apache.log4j.ConsoleAppender
+log4j.appender.console.Target = System.out
+log4j.appender.console.layout = org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern = [%d{yyyy-MM-dd HH:mm:ss,SSS}]-[%p]:%m   %x  %n
+
+
+log4j.appender.infoFile = org.apache.log4j.DailyRollingFileAppender
+log4j.appender.infoFile.Threshold = INFO
+log4j.appender.infoFile.File = /home/logs/log
+log4j.appender.infoFile.DatePattern = '.'yyyy-MM-dd'.log'
+log4j.appender.infoFile.Append = true
+log4j.appender.infoFile.layout = org.apache.log4j.PatternLayout
+log4j.appender.infoFile.layout.ConversionPattern = [%d{yyyy-MM-dd HH:mm:ss,SSS}]-[%p]:%m   %x  %n
+
+log4j.appender.errorFile = org.apache.log4j.DailyRollingFileAppender
+log4j.appender.errorFile.Threshold = ERROR
+log4j.appender.errorFile.File = /home/logs/error
+log4j.appender.errorFile.DatePattern = '.'yyyy-MM-dd'.log'
+log4j.appender.errorFile.Append = true
+log4j.appender.errorFile.layout = org.apache.log4j.PatternLayout
+log4j.appender.errorFile.layout.ConversionPattern = [%d{yyyy-MM-dd HH:mm:ss,SSS}]-[%p]:%m   %x  %n
+```
+
+### mybatis
+
+#### 添加依赖
+
+```xml
+<!-- mybatis -->
+<dependency>
+	<groupId>org.mybatis.spring.boot</groupId>
+	<artifactId>mybatis-spring-boot-starter</artifactId>
+	<version>2.1.0</version>
+</dependency>
+
+<!-- mysql -->
+<dependency>
+	<groupId>mysql</groupId>
+	<artifactId>mysql-connector-java</artifactId>
+</dependency>
+```
+
+#### 添加配置类
+
+在config目录下,创建MybatisConfig.java
+
+```java
+@Configuration
+@MapperScan("com.itianeru.mango.**.dao") // 扫描dao
+public class MyBatisConfig {
+    
+    @Autowired
+    private DataSource dataSource;
+    
+    public SqlSessionFactory sqlSessionFactory() throws Exception{
+        SqlSessionFactoryBean sessionFactoryBean = new SqlSessionFactoryBean();
+        sessionFactoryBean.setDataSource(dataSource);
+        // 定义包扫描
+        sessionFactoryBean.setTypeAliasesPackage("com.itianeru.mango.**.entity");
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        // 扫描映射文件
+        sessionFactoryBean.setMapperLocations(resolver.getResource("classpath*:**/mapper/*.xml"));
+        return sessionFactoryBean.getObject();
+    }
+}
+```
+
+#### 配置数据源
+
+```properties
+# 配置数据源
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://ip:3306/mango?useUnicode=true?zeroDateTimeBehavior=convertToNull&autoReconnect=true&characterEncoding=utf-8
+    username: username
+    password: password
+```
+
+### mybatis plus
+
+#### 添加依赖
+
+```xml
+<!-- mybatis plus -->
+<dependency>
+    <groupId>com.baomidou</groupId>
+    <artifactId>mybatis-plus-boot-starter</artifactId>
+    <version>3.3.0</version>
+</dependency>
+```
+
+#### 代码生成器
+
+```java
+// 替换相关参数, 运行该类, 即可生成代码
+public class CodeGenerator {
+    /**
+     * <p>
+     * 读取控制台内容
+     * </p>
+     */
+    public static String scanner(String tip) {
+        Scanner scanner = new Scanner(System.in);
+        StringBuilder help = new StringBuilder();
+        help.append("请输入" + tip + "：");
+        System.out.println(help.toString());
+        if (scanner.hasNext()) {
+            String ipt = scanner.next();
+            if (StringUtils.isNotEmpty(ipt)) {
+                return ipt;
+            }
+        }
+        throw new MybatisPlusException("请输入正确的" + tip + "！");
+    }
+
+    public static void main(String[] args) {
+        // 代码生成器
+        AutoGenerator mpg = new AutoGenerator();
+
+        // 全局配置
+        GlobalConfig gc = new GlobalConfig();
+        String projectPath = System.getProperty("user.dir");
+        gc.setOutputDir(projectPath + "/src/main/java");
+        gc.setAuthor("ITianerU");
+        gc.setOpen(false);
+        gc.setSwagger2(true);
+        mpg.setGlobalConfig(gc);
+
+        // 数据源配置
+        DataSourceConfig dsc = new DataSourceConfig();
+        dsc.setUrl("jdbc:mysql://ip:3306/mango?useUnicode=true&useSSL=false&characterEncoding=utf8");
+        // dsc.setSchemaName("public");
+        dsc.setDriverName("com.mysql.cj.jdbc.Driver");
+        dsc.setUsername("username");
+        dsc.setPassword("password");
+        mpg.setDataSource(dsc);
+
+        // 包配置
+        PackageConfig pc = new PackageConfig();
+        pc.setModuleName(scanner("请输入你的包名"));
+        pc.setParent("com.itianeru.mango");
+        mpg.setPackageInfo(pc);
+
+        // 自定义配置
+        InjectionConfig cfg = new InjectionConfig() {
+            @Override
+            public void initMap() {
+                // to do nothing
+            }
+        };
+
+        // 如果模板引擎是 freemarker
+        String templatePath = "/templates/mapper.xml.ftl";
+        // 如果模板引擎是 velocity
+        //String templatePath = "/templates/mapper.xml.vm";
+
+        // 自定义输出配置
+        List<FileOutConfig> focList = new ArrayList<>();
+        // 自定义配置会被优先输出
+        focList.add(new FileOutConfig(templatePath) {
+            @Override
+            public String outputFile(TableInfo tableInfo) {
+                // 自定义输出文件名 ， 如果你 Entity 设置了前后缀、此处注意 xml 的名称会跟着发生变化！！
+                return projectPath + "/src/main/resources/mapper/" + pc.getModuleName()
+                        + "/" + tableInfo.getEntityName() + "Mapper" + StringPool.DOT_XML;
+            }
+        });
+        /*
+        cfg.setFileCreate(new IFileCreate() {
+            @Override
+            public boolean isCreate(ConfigBuilder configBuilder, FileType fileType, String filePath) {
+                // 判断自定义文件夹是否需要创建
+                checkDir("调用默认方法创建的目录");
+                return false;
+            }
+        });
+        */
+        cfg.setFileOutConfigList(focList);
+        mpg.setCfg(cfg);
+
+        // 配置模板
+        TemplateConfig templateConfig = new TemplateConfig();
+
+        // 配置自定义输出模板
+        //指定自定义模板路径，注意不要带上.ftl/.vm, 会根据使用的模板引擎自动识别
+        // templateConfig.setEntity("templates/entity2.java");
+        // templateConfig.setService();
+        // templateConfig.setController();
+
+        templateConfig.setXml(null);
+        mpg.setTemplate(templateConfig);
+
+        // 策略配置
+        StrategyConfig strategy = new StrategyConfig();
+        // 数据库表映射到实体类的命名策略
+        strategy.setNaming(NamingStrategy.underline_to_camel);
+        // 数据库表字段映射到实体类的命名策略
+        strategy.setColumnNaming(NamingStrategy.underline_to_camel);
+
+        // strategy.setSuperEntityClass("com.baomidou.ant.common.BaseEntity");
+        // 设置实体类是否为lombok
+        strategy.setEntityLombokModel(true);
+        // 设置生成RestController控制器
+        strategy.setRestControllerStyle(true);
+        // 公共父类
+        // strategy.setSuperControllerClass("com.baomidou.ant.common.BaseController");
+        // 写于父类中的公共字段
+        // strategy.setSuperEntityColumns("id");
+        // strategy.setInclude(scanner("表名，多个英文逗号分割").split(","));
+        // 驼峰转连字符串
+        strategy.setControllerMappingHyphenStyle(true);
+        // 设置表前缀
+        strategy.setTablePrefix(pc.getModuleName() + "_");
+        mpg.setStrategy(strategy);
+        mpg.setTemplateEngine(new FreemarkerTemplateEngine());
+        mpg.execute();
+    }
+}
+```
+
+#### 分页插件
+
+添加配置
+
+```java
+// ~ MyBatisConfig.java
+@Bean
+public PaginationInterceptor paginationInterceptor(){
+	PaginationInterceptor paginationInterceptor = new PaginationInterceptor();
+    // 当请求的页超过最大页时, 回到首页
+    paginationInterceptor.setOverflow(true);
+    // 设置单页最大请求数量
+    paginationInterceptor.setLimit(1000);
+    return paginationInterceptor;
+}
+```
+
+使用
+
+```java
+@GetMapping("/findPage")
+public HttpResult findPage(){
+    // 创建分页实体, 构造器第一个参数为页码, 第二个参数为数量
+    Page<User> page = new Page<User>(1, 10);
+    return HttpResult.ok(userService.page(page))
+}
+```
+
+#### 多表联查&分页
+
+```java
+~ mapper.java
+// 分页配置类, 当作该方法的参数, 当调用该方法时, 可自动分页
+List<User> findUser(Page<User> page);
+```
+
+### 数据库连接池-Druid
+
+#### 添加依赖
+
+```xml
+<!-- 数据库连接池 druid-->
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>druid-spring-boot-starter</artifactId>
+    <version>1.1.20</version>
+</dependency>
+```
+
+#### 添加配置
+
+```properties
+# 配置数据源, 数据库连接池
+spring:
+  datasource:
+    name: druidDataSource
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://152.136.157.189:3306/mango?useUnicode=true?zeroDateTimeBehavior=convertToNull&autoReconnect=true&characterEncoding=utf-8
+      username: root
+      password: Lrt123456#
+#      filters: stat,wall,log4j, config  # 配置监控统计拦截的filters, 去掉后监控界面SQL无法统计, wall用于防火墙
+      max-active: 100  # 最大连接数
+      initial-size: 1  # 初始化大小
+      max-wait: 60000 # 最大等待时间
+      min-idle: 1  # 最小连接数
+      time-between-eviction-runs-millis: 60000 # 间隔多久检测一次要关闭的空闲连接
+      min-evictable-idle-time-millis: 300000 # 一个连接在连接池中最小的生存时间
+      validation-query: 'SELECT 1 FROM DUAL' # 验证数据库连接的查询语句
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true  # 缓存
+      max-open-prepared-statements: 50
+      max-pool-prepared-statement-per-connection-size: 20
+```
+
+#### 添加配置类
+
+```java
+@Configuration
+public class DruidConfig {
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ServletRegistrationBean<Servlet> statViewServlet() {
+        ServletRegistrationBean<Servlet> servletRegistrationBean = new ServletRegistrationBean<Servlet>(new StatViewServlet(), "/druid/*");
+        // 添加IP白名单, 是访问的客户端ip
+        servletRegistrationBean.addInitParameter("allow", "127.0.0.1,192.168.42.74");
+        // 添加IP黑名单，当白名单和黑名单重复时，黑名单优先级更高
+        // servletRegistrationBean.addInitParameter("deny", "192.168.25.123");
+        // 添加控制台管理用户
+        servletRegistrationBean.addInitParameter("loginUsername", "admin");
+        servletRegistrationBean.addInitParameter("loginPassword", "admin");
+        // 是否能够重置数据
+        servletRegistrationBean.addInitParameter("resetEnable", "false");
+        return servletRegistrationBean;
+    }
+
+    /**
+     * 配置服务过滤器
+     *
+     * @return 返回过滤器配置对象
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public FilterRegistrationBean filterRegistrationBean() {
+        FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean(new WebStatFilter());
+        // 添加过滤规则
+        filterRegistrationBean.addUrlPatterns("/*");
+        // 忽略过滤格式
+        filterRegistrationBean.addInitParameter("exclusions", "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*,");
+        return filterRegistrationBean;
+    }
+}
+```
+
+#### 访问监控页面
+
+```
+http://ip:port/druid/login.html
+```
+
+### CORS 跨域访问
+
+允许服务器跨域访问
+
+```java
+~ config/CorsConfig
+
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+    
+    public void addCordMapping(CorsRegistry registry){
+        // 允许跨域访问的路径
+        registry.addMapping("/**")
+                // 允许跨域访问的源
+                .allowedOrigins("*")
+                // 允许访问的方式
+                .allowedMethods("POST", "GET", "PUT", "OPTIONS", "DELETE")
+                // 预间隔时间
+                .maxAge(16800)
+                .allowedHeaders("*")
+                // 允许头部设置
+                .allowCredentials(true);
+    }
+}
+```
+
+### Office操作
+
+#### 添加依赖
+
+```xml
+<!-- office -->
+<dependency>
+    <groupId>org.apache.poi</groupId>
+    <artifactId>poi-ooxml</artifactId>
+    <version>4.0.0</version>
+</dependency>
+```
+
+#### 工具类
+
+```java
+~ FileUtils.java
+/**
+ * 文件相关操作
+ */
+public class FileUtils {
+    /**
+     * @Description: 文件下载
+     * @Param: response：响应， file:临时文件， newFileName：文件名称
+     */
+    public static void downloadFile(HttpServletResponse response, File file, String newFileName) {
+        try {
+            response.setHeader("Content-Disposition", "attachment; filename=" +
+                    new String(newFileName.getBytes("ISO-8859-1"), "UTF-8"));
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(response.getOutputStream());
+            InputStream inputStream = new FileInputStream(file.getAbsolutePath());
+            BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
+            int length = 0;
+            byte[] temp = new byte[1 * 1024 * 10];
+            while ((length = bufferedInputStream.read(temp)) != -1){
+                bufferedOutputStream.write(temp, 0, length);
+            }
+            bufferedOutputStream.flush();
+            bufferedOutputStream.close();
+            bufferedInputStream.close();
+            inputStream.close();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+```java
+~ PoiUtils.java
+/**
+ * @Description: office 相关操作
+ */
+public class PoiUtils {
+
+    /**
+     * @Description: 创建excel
+     * @Param: workbook： 工作表, fileName： 文件名称
+     */
+    public static File createExcelFile(Workbook workbook, String fileName){
+        OutputStream stream = null;
+        File file = null;
+        try {
+            file = File.createTempFile(fileName, ".xlsx");
+            stream = new FileOutputStream(file.getAbsoluteFile());
+            workbook.write(stream);
+        }catch (FileNotFoundException e){
+            e.printStackTrace();
+        }catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            IOUtils.closeQuietly(workbook);
+            IOUtils.closeQuietly(stream);
+        }
+        return file;
+    }
+}
+```
+
+#### 使用(Excel)
+
+```java
+public File createUserExcelFile(List<User> list) {
+    if(list == null){
+        list = new ArrayList<User>();
+    }
+    // 创建excel工作簿
+    Workbook workbook = new XSSFWorkbook();
+    // 创建sheet页
+    Sheet sheet = workbook.createSheet();
+    // 创建第1行
+    Row row0 = sheet.createRow(0);
+    int columnIndex = 0;
+    // 创建单元格,并且赋值表头
+    row0.createCell(columnIndex).setCellValue("序号");
+    row0.createCell(++columnIndex).setCellValue("ID");
+    row0.createCell(++columnIndex).setCellValue("用户名");
+    row0.createCell(++columnIndex).setCellValue("昵称");
+    row0.createCell(++columnIndex).setCellValue("机构");
+    row0.createCell(++columnIndex).setCellValue("角色");
+    row0.createCell(++columnIndex).setCellValue("邮箱");
+    row0.createCell(++columnIndex).setCellValue("手机号");
+    row0.createCell(++columnIndex).setCellValue("状态");
+    row0.createCell(++columnIndex).setCellValue("头像");
+    row0.createCell(++columnIndex).setCellValue("创建人");
+    row0.createCell(++columnIndex).setCellValue("创建时间");
+    row0.createCell(++columnIndex).setCellValue("最后更新人");
+    row0.createCell(++columnIndex).setCellValue("最后更新时间");
+    int rowNum = 0;
+    // 遍历数据, 写入表格
+    for (User user: list) {
+        Row row = sheet.createRow(++rowNum);
+        for (int i =0; i < columnIndex + 1; i++){
+            row.createCell(i);
+        }
+        columnIndex = 0;
+        row.getCell(columnIndex).setCellValue(rowNum);
+        row.getCell(++columnIndex).setCellValue(user.getId());
+        row.getCell(++columnIndex).setCellValue(user.getName());
+        row.getCell(++columnIndex).setCellValue(user.getNickName());
+        row.getCell(++columnIndex).setCellValue(user.getDeptName());
+        row.getCell(++columnIndex).setCellValue(user.getRoleNames());
+        row.getCell(++columnIndex).setCellValue(user.getEmail());
+        row.getCell(++columnIndex).setCellValue(user.getMobile());
+        row.getCell(++columnIndex).setCellValue(user.getStatus());
+        row.getCell(++columnIndex).setCellValue(user.getAvatar());
+        row.getCell(++columnIndex).setCellValue(user.getCreateBy());
+        row.getCell(++columnIndex).setCellValue(user.getCreateTime().toString());
+        row.getCell(++columnIndex).setCellValue(user.getLastUpdateBy());
+        row.getCell(++columnIndex).setCellValue(user.getLastUpdateTime().toString());
+    }
+    return PoiUtils.createExcelFile(workbook, "user-list");
+}
+```
+
+### 验证码
+
+#### 添加依赖
+
+```xml
+<dependency>
+    <groupId>com.github.axet</groupId>
+    <artifactId>kaptcha</artifactId>
+    <version>0.0.9</version>
+</dependency>
+```
+
+#### 添加配置类
+
+```java
+@Configuration
+public class KaptchaConfig {
+    
+    @Bean
+    public DefaultKaptcha producer(){
+        Properties properties = new Properties();
+        // 边框
+        properties.put("kaptcha.border", "no");
+        // 字体颜色
+        properties.put("kaptcha.textproducer.font.color", "black");
+        // 字符间距
+        properties.put("kaptcha.textproducer.char.space", "5");
+        Config config = new Config(properties);
+        DefaultKaptcha defaultKaptcha = new DefaultKaptcha();
+        defaultKaptcha.setConfig(config);
+        return defaultKaptcha;
+    }
+}
+```
+
+#### 使用
+
+```java
+~ LoginController.java
+
+@Autowired
+private Producer producer;
+
+@GetMapping("/captcha.jpg")
+public void captcha(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    response.setHeader("Cache-Control", "no-store, no-cache");
+    response.setContentType("image/jpeg");
+    // 生成验证码文字
+    String text = producer.createText();
+    // 生成图片二维码
+    BufferedImage image = producer.createImage(text);
+    // 将验证码文字保存到session
+    request.getSession().setAttribute(Constants.KAPTCHA_SESSION_KEY, text);
+    ServletOutputStream out = response.getOutputStream();
+    ImageIO.write(image, "jpg", out);
+    IOUtils.closeQuietly(out);
+}
+```
+
+### 安全认证 - Spring Security  (难--暂时略过*)
+
+#### 添加依赖
+
+```xml
+<!-- Spring Security -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<!-- jwt -->
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt</artifactId>
+    <version>0.9.1</version>
+</dependency>
+```
+
+### 监控服务
+
+#### 添加依赖
+
+```xml
+# 新建项目, 添加如下依赖 (推荐在创建项目时, 选择依赖包后再创建)
+<!-- 监控服务 -->
+<dependency>
+    <groupId>de.codecentric</groupId>
+    <artifactId>spring-boot-admin-starter-server</artifactId>
+</dependency>
+```
+
+```xml
+# 在想要监控的服务上添加依赖
+<!-- 监控客户端 -->
+<dependency>
+    <groupId>de.codecentric</groupId>
+    <artifactId>spring-boot-admin-starter-client</artifactId>
+    <version>2.2.1</version>
+</dependency>
+```
+
+#### 添加配置
+
+```yml
+# 监控服务配置
+server:
+  port: 8000 # 设置端口号
+
+spring:
+  application:
+    name: xxx # 设置监控服务的名称
+```
+
+注册服务
+
+```yml
+# 客户端配置
+spring:		
+    boot:
+        admin:
+          client:
+            url: "http://localhost:8000"  # 指定监控服务器地址, 将该服务注册到监控服务
+            
+# 暴露端点, 不然无法被监控服务器查看
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+```
+
+#### 开启监控服务
+
+```java
+@SpringBootApplication
+@EnableAdminServer   // 在监控服务的启动类添加@EnableAdminServer注解, 开启监控服务
+public class MangoMonitorApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MangoMonitorApplication.class, args);
+    }
+}
+```
+
+#### 使用
+
+```
+访问http://localhost:8000, 可看到被监控的服务
+```
+
