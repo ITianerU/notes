@@ -194,7 +194,29 @@ CMD /bin/bash
 docker build -f [DockerFile文件路径] -t [创建的镜像名] [创建的镜像存放路径]
 ```
 
+#### 查看镜像历史
 
+docker history
+
+查看镜像由dockerFile创建的过程
+
+```
+docker history [镜像名/镜像ID]
+```
+
+#### 提交镜像
+
+发布到阿里云上 
+
+- 登录阿里云
+- 创建仓库 
+- 在仓库列表点击管理按钮， 会有提交文档
+
+```
+sudo docker login --username=[用户手机号] registry.cn-beijing.aliyuncs.com
+sudo docker tag [ImageId] registry.cn-beijing.aliyuncs.com/itianeru/centos:[镜像版本号]
+sudo docker push registry.cn-beijing.aliyuncs.com/itianeru/centos:[镜像版本号]
+```
 
 ### 容器
 
@@ -327,6 +349,12 @@ docker exec -it [容器名/id] /bin/bash
 docker exec -it [容器名/id] /bin/bash
 ```
 
+后面可加上想要在容器内部操作的命令
+
+```
+docker exec [名/id] ls -l
+```
+
 docker attach
 
 不会创建新的进程,  多个用户登录时, 会造成共享界面
@@ -423,6 +451,10 @@ docker从基础镜像运行一个容器 -> 执行一条指令, 并对容器做�
 
 - MAINTAINER   镜像维护者的姓名, 邮箱
 
+  ```
+  MAINTAINER  name<mail>
+  ```
+
 - RUN   容器构建需要的命令  
 
 - EXPOSE   对外暴露的端口号
@@ -437,26 +469,40 @@ docker从基础镜像运行一个容器 -> 执行一条指令, 并对容器做�
   WORKDIR  $[变量名]
   ```
 
-- ADD   将构建过程中要使用的压缩包, 复制进去, 并解压缩
+- ADD   将构建过程中要使用的压缩包, 复制进去, 并解压缩到镜像中指定的文件夹
 
-- COPY    将构建过程中要使用的压缩包, 复制进去
+- COPY    将构建过程中要使用的压缩包, 复制到镜像中指定的文件夹
 
 - VOLUME   指定容器数据卷
 
 - CMD   指定容器启动时, 要执行的命令, 多个CMD只有最后一个生效,  在终端使用docker run后面接的命令会替换掉       CMD命令
 
-- ENTRYPOINT  指定容器启动时, 要执行的命令, 可以有多个, 不会被替换
+- ENTRYPOINT  指定容器启动时, 要执行的命令, 可以有多个, 不会被替换， docker run后面接的命令会添加到ENTRYPOINT后面
 
 - ONBUILD  构建一个被继承的镜像触发的指令,  父镜像被子镜像继承后, 父镜像的ONBUILD触发
 
-```
+```shell
 # 例 创建带有vim的镜像
 
 FROM centos
+
+MAINTAINER itianeru<1438687182@qq.com>
+
+ENV PATH /home
+
+WORKDIR $PATH
+
 RUN yum -y install vim
 RUN yum -y install net-tools
 
 EXPOSE 80
+
+CMD /bin/bash
+```
+
+```shell
+# 例 tomcat
+
 ```
 
 
@@ -472,4 +518,65 @@ docker run -it --name container01 centos
 docker run -it --name container02 --volumes-from container01 centos  
 ```
 
- 
+### 例子
+
+#### mysql
+
+- docker search mysql   # 查找
+
+- docker pull mysql   # 下载
+
+- docker images mysql   # 查看
+
+- docker run   # 运行实例 
+
+  - -p  3306:3306    # 端口映射
+  -  --name mysql    # 容器命名
+
+  -  -v /mysql/conf:/etc/mysql/conf.d   # 主机与容器共享配置文件
+  -  -v /mysql/logs:logs    # 主机与容器共享日志
+  -  -v /mysql/data:/var/lib/mysql   # 主机与容器共享数据
+  -  -e MYSQL_ROOT_PASSWORD=123456   # 初始化root用户密码
+  -  -d mysql   # 后台运行
+
+```cmd
+docker run -p 3306:3306 --name mysql -v /home/li/mysql-data/conf:/etc/mysql/conf.d -v /home/li/mysql-data/logs:/logs -v /home/li/mysql-data/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql
+```
+
+测试安装
+
+- docker exec -it mysql /bin/bash   # 进入mysql容器终端
+- mysql -uroot -p   
+- 输入密码
+
+备份
+
+```
+docker exec [容器名] sh -c ' exec mysqldump --all-databases -uroot -p"123456" ' > 【备份路径】
+```
+
+#### redis
+
+- docker search redis   # 查找
+
+- docker pull redis   # 下载
+
+- docker images redis   # 查看
+
+- docker run   # 运行实例 
+
+  - -p  3306:3306    # 端口映射
+  -  --name redis    # 容器命名
+
+  -  -v /home/li/redis-data/data:/data   # 主机与容器共享数据
+  -  -v /home/li/redis-data/conf/redis.conf:/usr/local/etc/redis/redis.conf    # 主机与容器共享配置文件
+  -  -d redis   # 后台运行
+  - redis-server /usr/local/etc/redis/redis.conf --appendonly yes   # 执行启动命令
+
+```
+docker run -p 6379:6379 --name redis -v /home/li/redis-data/data:/data -v /home/li/redis-data/conf/redis.conf:/usr/local/etc/redis/redis.conf  -d redis  redis-server /usr/local/etc/redis/redis.conf --appendonly yes
+```
+
+测试安装
+
+- docker exec -it redis redis-cli
