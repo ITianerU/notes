@@ -191,7 +191,7 @@ CMD /bin/bash
 
 ```
 # 创建镜像
-docker build -f [DockerFile文件路径] -t [创建的镜像名] [创建的镜像存放路径]
+docker build -f [DockerFile文件路径] -t [创建的镜像名:版本号] [创建的镜像存放路径]
 ```
 
 #### 查看镜像历史
