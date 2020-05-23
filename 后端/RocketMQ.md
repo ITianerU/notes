@@ -114,3 +114,182 @@ sh bin/tools.sh org.apache.rocketmq.example.quickstart.Consumer
 ```cmd
 tail -f /root/logs/rocketmqlogs/namesrv.log 
 ```
+
+# 角色
+
+- Producer: 消息提供者
+- Consumer:  消息消费者
+- Broker:  暂存和传输消息
+- NameServer:  管理Broker, 类似注册中心
+- Topic:  区分消息种类; 
+- Message Queue:  相当于Topic分区(子分类),  用于并行发送和接收消息
+
+# 集群
+
+![集群](../图片/RocketMQ/集群.png)
+
+Producer提供消息, 先向Name Server询问, 发送给哪个Broker
+
+Consumer消费消息, 也要先向Name Server询问, 接收哪个Broker的消息
+
+## 特点
+
+- Name Server, Producer, Consumer 是无状态的,  broker会给每个Name Server上报信息,  每个Name Server的数据都相同, 不需要数据交互,
+
+  此特点, 让Name Server, Producer, Consumer  启动多个, 即可搭建集群
+
+- Broker 分为Master, Slave, Master处理写(接收)操作,  Slave处理读(提供)操作
+
+  Name Server 把Broker Name相同的节点当作一组,  通过Broker ID区分,  0为Master, 非0为Slave
+
+  一个Master可有多个Slave,  一个Slave只能有一个Master
+
+  Master会通过同步/异步, 将数据发送给Slave
+
+- Producer与Name Server集群其中一个建立长连接,  每次发送消息都要询问Name Server,  要发送给哪个broker,  Name Server通过携带的Topic来判断
+
+  Producer也会与Master建立长连接,  定时向Master发送心跳检测,  判断Producer状态
+
+- Consumer与Name Server集群其中一个建立长连接,  定期询问Name Server,
+
+  Consumer也会与Master, Slave建立长连接,  定时向Master, Slave发送心跳检测,  判断Consumer状态
+
+  Consumer接收数据有两种方式,  一种是broker主动推送,  一种是consumer主动接收
+
+  Consumer既可订阅Master的消息,  也可订阅Slave的消息
+
+## 集群模式
+
+- **单Master模式**(非集群)
+
+  风险大,  一旦Broker重启或者宕机, 会导致整个服务不可用
+
+- **多Master模式**
+
+  无Slave,  全是Master
+
+  -  **优点**
+
+    配置简单,  单个Master宕机或重启对应用无影响,  性能最高
+
+  - **缺点**
+
+    单台机器宕机期间,  这台机器上未被消费的消息在机器回复之前, 不可订阅, 消息实时形受到影响
+
+- **多Master模式多Slave模式(异步)**
+
+  Producer向Broker发送消息后, Broker直接返回响应
+
+  - **优点**
+
+    磁盘损坏, 消息丢失最少, 消息实时性不受影响, Master宕机, 消费者仍然可以从Slave消费, 性能同多Master模式一样
+
+  - **缺点**
+
+    Master宕机, 磁盘损坏会丢失少量消息
+
+- **多Master模式多Slave模式(同步)**
+
+  Producer向Broker发送消息后, Broker的Master先将数据同步到Slave,  再做响应
+
+  - **优点**
+
+    数据与服务都无单点故障, Master宕机情况下,  消息无延迟,  服务可用性与数据可用性非常高
+
+  - **缺点**
+
+    性能比异步复制模式略低, 大约10%, 发送单个消息RT略高
+
+## 集群工作流程
+
+1. 启动Name Server,  监听端口,  等待Broker, Producer, Consumer连接
+
+2. Broker启动后, 与Name Server保持长连接, 定时发送心跳包.  心跳包包含当前Broker信息, 以及存储所有的Topic信息.
+
+   注册成功后, NameServer中就有Topic和Broker的映射关系
+
+3. 发送消息前, 先创建Topic, 创建Topic需要指定该Topic存储在哪些Broker上,  也可以在发送消息时自动创建Topic
+
+4. Producer发送消息, 启动时先跟NameServer集群中的一台建立长连接, 并从NameServier中获取当前发送的Topic存在哪些Broker上, 轮询从队列列表中选择一个队列, 然后与队列所在的Broker建立长连接从而向Broker发消息.
+
+5. Consumer跟Producer类似, 跟NameServer集群中的一台建立长连接,从NameServier中获取订阅的Topic存在哪些Broker上, 与Broker建立通道, 消费消息
+
+## 安装
+
+### 配置Host
+
+```properties
+# nameserver
+172.17.0.4  rocketmq-nameserver1
+172.17.0.5  rocketmq-nameserver2
+# broker
+172.17.0.4  rockermq-master1
+172.17.0.4  rockermq-slave2
+172.17.0.5  rockermq-master2
+172.17.0.5  rockermq-slave1
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
