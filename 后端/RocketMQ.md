@@ -229,17 +229,148 @@ Consumer消费消息, 也要先向Name Server询问, 接收哪个Broker的消息
 172.17.0.5  rockermq-slave1
 ```
 
+### 开放端口
 
+使用docker, 只要开启宿主机防火墙 
 
+```cmd
+# 开放端口
+firewall-cmd --zone=public --add-port=[端口号]/tcp --permanent
+# 重启防火墙
+firewall-cmd --reload
+```
 
+### 创建消息存储路径
 
+```bash
+mkdir /usr/local/rocketmq/store
+mkdir /usr/local/rocketmq/store/commitlog
+mkdir /usr/local/rocketmq/store/consumequeue
+mkdir /usr/local/rocketmq/store/index
+```
 
+### 配置文件
 
+配置双主双从同步
 
+目录 /conf/2m-2s-sync
 
+```properties
+~ broker-a.properties  配置master
 
+# 集群名字,  集群每个节点的集群名字都相同
+brokerClusterName=rocketmq-cluster   
+# broker 名字
+brokerName=broker-a
+# broker id  0表示Master, >0 表示Slave
+brokerId=0      
+# nameServer地址
+namesrvAddr=172.17.0.4:9876;172.17.0.5:9876
+# 在发送消息时, 自动创建服务器不存在的topic,  默认创建的队列数
+defaultTopicQueueNums=4
+# 是否允许 Broker 自动创建Topic, 建议线下开启, 线上关闭
+autoCreateTopicEnable=true
+# 是否允许 Broker 自动创建订阅组, 建议线下开启, 线上关闭
+autoCreateSubscriptionGroup=true
+# Broker 对外服务监听的端口, 在同一台机器上启动主从broker端口不能重复
+listenPort=10911
+# 删除无用消息的时间   04表示凌晨4点
+deleteWhen=04  
+# 刷盘时间(文件保留时间) 单位/小时
+fileReservedTime=120 
+# commitLog 每个文件大小
+mapedFileSizeCommitLog=1073741824
+# ConsumeQueue每个文件,存储条数
+mapedFileSizeConsumeQueue=300000
+# commitlog目录所在分区的最大使用比例，如果commitlog目录所在的分区使用比例大于该值，则触发过期文件删除
+diskMaxUsedSpaceRatio=88
+# 存储路径
+storePathRootDir=/usr/local/rocketmq/store
+# commitLog 存储路径
+storePathCommitLog=/usr/local/rocketmq/store/commitlog
+# 消费队列存储路径
+storePathConsumeQueue=/usr/local/rocketmq/store/consumequeue
+# 消息索引存放路径
+storePathIndex=/usr/local/rocketmq/store/index
+# checkpoint 文件存储路径
+storeCheckpoint=/usr/local/rocketmq/store/checkpoint
+# abort 文件存储路径
+abortFile=/usr/local/rocketmq/store/abort
+# 限制消息大小
+maxMessageSize=65536
+# broker 角色   ASYNC_MASTER 异步复制Master, SYNC_MASTER 同步双写, SLAVE 从
+brokerRole=SYNC_MASTER
+# 刷盘策略  SYNC_FLUSH  同步刷,  ASYNC_FLUSH  异步刷
+flushDiskType=SYNC_FLUSH      
 
+```
 
+```properties
+~ broker-b-s.properties  配置slave
+
+# 集群名字,  集群每个节点的集群名字都相同
+brokerClusterName=rocketmq-cluster   
+# broker 名字
+brokerName=broker-b
+# broker id  0表示Master, >0 表示Slave
+brokerId=1    
+# nameServer地址
+namesrvAddr=172.17.0.4:9876;172.17.0.5:9876
+# 在发送消息时, 自动创建服务器不存在的topic,  默认创建的队列数
+defaultTopicQueueNums=4
+# 是否允许 Broker 自动创建Topic, 建议线下开启, 线上关闭
+autoCreateTopicEnable=true
+# 是否允许 Broker 自动创建订阅组, 建议线下开启, 线上关闭
+autoCreateSubscriptionGroup=true
+# Broker 对外服务监听的端口
+listenPort=11011
+# 删除无用消息的时间   04表示凌晨4点
+deleteWhen=04  
+# 刷盘时间(文件保留时间) 单位/小时
+fileReservedTime=120 
+# commitLog 每个文件大小
+mapedFileSizeCommitLog=1073741824
+# ConsumeQueue每个文件,存储条数
+mapedFileSizeConsumeQueue=300000
+# commitlog目录所在分区的最大使用比例，如果commitlog目录所在的分区使用比例大于该值，则触发过期文件删除
+diskMaxUsedSpaceRatio=88
+# 存储路径
+storePathRootDir=/usr/local/rocketmq/store
+# commitLog 存储路径
+storePathCommitLog=/usr/local/rocketmq/store/commitlog
+# 消费队列存储路径
+storePathConsumeQueue=/usr/local/rocketmq/store/consumequeue
+# 消息索引存放路径
+storePathIndex=/usr/local/rocketmq/store/index
+# checkpoint 文件存储路径
+storeCheckpoint=/usr/local/rocketmq/store/checkpoint
+# abort 文件存储路径
+abortFile=/usr/local/rocketmq/store/abort
+# 限制消息大小
+maxMessageSize=65536
+# broker 角色   ASYNC_MASTER 异步复制Master, SYNC_MASTER 同步双写, SLAVE 从
+brokerRole=SLAVE
+# 刷盘策略  SYNC_FLUSH  同步刷,  ASYNC_FLUSH  异步刷
+flushDiskType=SYNC_FLUSH      
+```
+
+### 启动
+
+**nameserver启动** 
+
+分别启动每个服务器的nameserver
+
+```bash
+nohup sh mqnamesrv &
+```
+
+**broker启动**
+
+分别启动每个broker的主从节点
+
+```
+nohup sh mqbroker -c [broker-a.properties路径] &
+```
 
 
 
