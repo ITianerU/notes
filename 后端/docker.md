@@ -53,7 +53,7 @@ sudo systemctl start docker
 sudo mkdir -p /etc/docker
 sudo tee /etc/docker/daemon.json <<-'EOF'
 {
-  "registry-mirrors": ["https://1epak68f.mirror.aliyuncs.com"]
+  "registry-mirrors": ["阿里云镜像加速地址"]
 }
 EOF
 sudo systemctl daemon-reload
