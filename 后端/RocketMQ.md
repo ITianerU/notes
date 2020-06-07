@@ -242,116 +242,321 @@ firewall-cmd --reload
 
 ### 创建消息存储路径
 
+一号机
+
 ```bash
-mkdir /usr/local/rocketmq/store
-mkdir /usr/local/rocketmq/store/commitlog
-mkdir /usr/local/rocketmq/store/consumequeue
-mkdir /usr/local/rocketmq/store/index
+mkdir /usr/local/rocketmq/store/broker-a
+mkdir /usr/local/rocketmq/store/broker-a/commitlog
+mkdir /usr/local/rocketmq/store/broker-a/consumequeue
+mkdir /usr/local/rocketmq/store/broker-a/index
+mkdir /usr/local/rocketmq/store/broker-b-s
+mkdir /usr/local/rocketmq/store/broker-b-s/commitlog
+mkdir /usr/local/rocketmq/store/broker-b-s/consumequeue
+mkdir /usr/local/rocketmq/store/broker-b-s/index
+```
+
+二号机
+
+```bash
+mkdir /usr/local/rocketmq/store/broker-b
+mkdir /usr/local/rocketmq/store/broker-b/commitlog
+mkdir /usr/local/rocketmq/store/broker-b/consumequeue
+mkdir /usr/local/rocketmq/store/broker-b/index
+mkdir /usr/local/rocketmq/store/broker-a-s
+mkdir /usr/local/rocketmq/store/broker-a-s/commitlog
+mkdir /usr/local/rocketmq/store/broker-a-s/consumequeue
+mkdir /usr/local/rocketmq/store/broker-a-s/index
 ```
 
 ### 配置文件
 
 配置双主双从同步
 
-目录 /conf/2m-2s-sync
+一号机 目录 /conf/2m-2s-sync
 
 ```properties
 ~ broker-a.properties  配置master
 
-# 集群名字,  集群每个节点的集群名字都相同
-brokerClusterName=rocketmq-cluster   
-# broker 名字
+#暴露的外网IP
+brokerIP1=1号服务器公网IP
+brokerIP2=1号服务器公网IP
+#所属集群名字
+brokerClusterName=rocketmq-cluster
+#broker名字，注意此处不同的配置文件填写的不一样
 brokerName=broker-a
-# broker id  0表示Master, >0 表示Slave
-brokerId=0      
-# nameServer地址
-namesrvAddr=172.17.0.4:9876;172.17.0.5:9876
-# 在发送消息时, 自动创建服务器不存在的topic,  默认创建的队列数
+#0 表示 Master，>0 表示 Slave
+brokerId=0
+#nameServer地址，分号分割
+namesrvAddr=rocketmq-nameserver1:9876;rocketmq-nameserver2:9876
+#在发送消息时，自动创建服务器不存在的topic，默认创建的队列数
 defaultTopicQueueNums=4
-# 是否允许 Broker 自动创建Topic, 建议线下开启, 线上关闭
+#是否允许 Broker 自动创建Topic，建议线下开启，线上关闭
 autoCreateTopicEnable=true
-# 是否允许 Broker 自动创建订阅组, 建议线下开启, 线上关闭
+#是否允许 Broker 自动创建订阅组，建议线下开启，线上关闭
 autoCreateSubscriptionGroup=true
-# Broker 对外服务监听的端口, 在同一台机器上启动主从broker端口不能重复
+#Broker 对外服务的监听端口
 listenPort=10911
-# 删除无用消息的时间   04表示凌晨4点
-deleteWhen=04  
-# 刷盘时间(文件保留时间) 单位/小时
-fileReservedTime=120 
-# commitLog 每个文件大小
+#删除文件时间点，默认凌晨 4点
+deleteWhen=04
+#文件保留时间，默认 48 小时
+fileReservedTime=120
+#commitLog每个文件的大小默认1G
 mapedFileSizeCommitLog=1073741824
-# ConsumeQueue每个文件,存储条数
+#ConsumeQueue每个文件默认存30W条，根据业务情况调整
 mapedFileSizeConsumeQueue=300000
-# commitlog目录所在分区的最大使用比例，如果commitlog目录所在的分区使用比例大于该值，则触发过期文件删除
+#destroyMapedFileIntervalForcibly=120000
+#redeleteHangedFileInterval=120000
+#检测物理文件磁盘空间
 diskMaxUsedSpaceRatio=88
-# 存储路径
-storePathRootDir=/usr/local/rocketmq/store
-# commitLog 存储路径
-storePathCommitLog=/usr/local/rocketmq/store/commitlog
-# 消费队列存储路径
-storePathConsumeQueue=/usr/local/rocketmq/store/consumequeue
-# 消息索引存放路径
-storePathIndex=/usr/local/rocketmq/store/index
-# checkpoint 文件存储路径
-storeCheckpoint=/usr/local/rocketmq/store/checkpoint
-# abort 文件存储路径
-abortFile=/usr/local/rocketmq/store/abort
-# 限制消息大小
+#存储路径
+storePathRootDir=/usr/local/rocketmq/store/broker-a
+#commitLog 存储路径
+storePathCommitLog=/usr/local/rocketmq/store/broker-a/commitlog
+#消费队列存储路径存储路径
+storePathConsumeQueue=/usr/local/rocketmq/store/broker-a/consumequeue
+#消息索引存储路径
+storePathIndex=/usr/local/rocketmq/store/broker-a/index
+#checkpoint 文件存储路径
+storeCheckpoint=/usr/local/rocketmq/store/broker-a/checkpoint
+#abort 文件存储路径
+abortFile=/usr/local/rocketmq/store/broker-a/abort
+#限制的消息大小
 maxMessageSize=65536
-# broker 角色   ASYNC_MASTER 异步复制Master, SYNC_MASTER 同步双写, SLAVE 从
+#flushCommitLogLeastPages=4
+#flushConsumeQueueLeastPages=2
+#flushCommitLogThoroughInterval=10000
+#flushConsumeQueueThoroughInterval=60000
+#Broker 的角色
+#- ASYNC_MASTER 异步复制Master
+#- SYNC_MASTER 同步双写Master
+#- SLAVE
 brokerRole=SYNC_MASTER
-# 刷盘策略  SYNC_FLUSH  同步刷,  ASYNC_FLUSH  异步刷
-flushDiskType=SYNC_FLUSH      
-
+#刷盘方式
+#- ASYNC_FLUSH 异步刷盘
+#- SYNC_FLUSH 同步刷盘
+flushDiskType=SYNC_FLUSH
+#checkTransactionMessageEnable=false
+#发消息线程池数量
+#sendMessageThreadPoolNums=128
+#拉消息线程池数量
+#pullMessageThreadPoolNums=128
 ```
 
 ```properties
 ~ broker-b-s.properties  配置slave
 
-# 集群名字,  集群每个节点的集群名字都相同
-brokerClusterName=rocketmq-cluster   
-# broker 名字
+#暴露的外网IP
+brokerIP1=1号服务器公网IP
+brokerIP2=1号服务器公网IP
+#所属集群名字
+brokerClusterName=rocketmq-cluster
+#broker名字，注意此处不同的配置文件填写的不一样
 brokerName=broker-b
-# broker id  0表示Master, >0 表示Slave
-brokerId=1    
-# nameServer地址
-namesrvAddr=172.17.0.4:9876;172.17.0.5:9876
-# 在发送消息时, 自动创建服务器不存在的topic,  默认创建的队列数
+#0 表示 Master，>0 表示 Slave
+brokerId=1
+#nameServer地址，分号分割
+namesrvAddr=rocketmq-nameserver1:9876;rocketmq-nameserver2:9876
+#在发送消息时，自动创建服务器不存在的topic，默认创建的队列数
 defaultTopicQueueNums=4
-# 是否允许 Broker 自动创建Topic, 建议线下开启, 线上关闭
+#是否允许 Broker 自动创建Topic，建议线下开启，线上关闭
 autoCreateTopicEnable=true
-# 是否允许 Broker 自动创建订阅组, 建议线下开启, 线上关闭
+#是否允许 Broker 自动创建订阅组，建议线下开启，线上关闭
 autoCreateSubscriptionGroup=true
-# Broker 对外服务监听的端口
+#Broker 对外服务的监听端口
 listenPort=11011
-# 删除无用消息的时间   04表示凌晨4点
-deleteWhen=04  
-# 刷盘时间(文件保留时间) 单位/小时
-fileReservedTime=120 
-# commitLog 每个文件大小
+#删除文件时间点，默认凌晨 4点
+deleteWhen=04
+#文件保留时间，默认 48 小时
+fileReservedTime=120
+#commitLog每个文件的大小默认1G
 mapedFileSizeCommitLog=1073741824
-# ConsumeQueue每个文件,存储条数
+#ConsumeQueue每个文件默认存30W条，根据业务情况调整
 mapedFileSizeConsumeQueue=300000
-# commitlog目录所在分区的最大使用比例，如果commitlog目录所在的分区使用比例大于该值，则触发过期文件删除
+#destroyMapedFileIntervalForcibly=120000
+#redeleteHangedFileInterval=120000
+#检测物理文件磁盘空间
 diskMaxUsedSpaceRatio=88
-# 存储路径
-storePathRootDir=/usr/local/rocketmq/store
-# commitLog 存储路径
-storePathCommitLog=/usr/local/rocketmq/store/commitlog
-# 消费队列存储路径
-storePathConsumeQueue=/usr/local/rocketmq/store/consumequeue
-# 消息索引存放路径
-storePathIndex=/usr/local/rocketmq/store/index
-# checkpoint 文件存储路径
-storeCheckpoint=/usr/local/rocketmq/store/checkpoint
-# abort 文件存储路径
-abortFile=/usr/local/rocketmq/store/abort
-# 限制消息大小
+#存储路径
+storePathRootDir=/usr/local/rocketmq/store/broker-b-s
+#commitLog 存储路径
+storePathCommitLog=/usr/local/rocketmq/store/broker-b-s/commitlog
+#消费队列存储路径存储路径
+storePathConsumeQueue=/usr/local/rocketmq/store/broker-b-s/consumequeue
+#消息索引存储路径
+storePathIndex=/usr/local/rocketmq/store/broker-b-s/index
+#checkpoint 文件存储路径
+storeCheckpoint=/usr/local/rocketmq/store/broker-b-s/checkpoint
+#abort 文件存储路径
+abortFile=/usr/local/rocketmq/store/broker-b-s/abort
+#限制的消息大小
 maxMessageSize=65536
-# broker 角色   ASYNC_MASTER 异步复制Master, SYNC_MASTER 同步双写, SLAVE 从
+#flushCommitLogLeastPages=4
+#flushConsumeQueueLeastPages=2
+#flushCommitLogThoroughInterval=10000
+#flushConsumeQueueThoroughInterval=60000
+#Broker 的角色
+#- ASYNC_MASTER 异步复制Master
+#- SYNC_MASTER 同步双写Master
+#- SLAVE
 brokerRole=SLAVE
-# 刷盘策略  SYNC_FLUSH  同步刷,  ASYNC_FLUSH  异步刷
-flushDiskType=SYNC_FLUSH      
+#刷盘方式
+#- ASYNC_FLUSH 异步刷盘
+#- SYNC_FLUSH 同步刷盘
+flushDiskType=ASYNC_FLUSH
+#checkTransactionMessageEnable=false
+#发消息线程池数量
+#sendMessageThreadPoolNums=128
+#拉消息线程池数量
+#pullMessageThreadPoolNums=128
+```
+
+2号机
+
+```properties
+~ broker-b.properties  配置master
+#暴露的外网IP
+brokerIP1=2号服务器公网IP
+brokerIP2=2号服务器公网IP
+#所属集群名字
+brokerClusterName=rocketmq-cluster
+#broker名字，注意此处不同的配置文件填写的不一样
+brokerName=broker-b
+#0 表示 Master，>0 表示 Slave
+brokerId=0
+#nameServer地址，分号分割
+namesrvAddr=rocketmq-nameserver1:9876;rocketmq-nameserver2:9876
+#在发送消息时，自动创建服务器不存在的topic，默认创建的队列数
+defaultTopicQueueNums=4
+#是否允许 Broker 自动创建Topic，建议线下开启，线上关闭
+autoCreateTopicEnable=true
+#是否允许 Broker 自动创建订阅组，建议线下开启，线上关闭
+autoCreateSubscriptionGroup=true
+#Broker 对外服务的监听端口
+listenPort=10911
+#删除文件时间点，默认凌晨 4点
+deleteWhen=04
+#文件保留时间，默认 48 小时
+fileReservedTime=120
+#commitLog每个文件的大小默认1G
+mapedFileSizeCommitLog=1073741824
+#ConsumeQueue每个文件默认存30W条，根据业务情况调整
+mapedFileSizeConsumeQueue=300000
+#destroyMapedFileIntervalForcibly=120000
+#redeleteHangedFileInterval=120000
+#检测物理文件磁盘空间
+diskMaxUsedSpaceRatio=88
+#存储路径
+storePathRootDir=/usr/local/rocketmq/store/broker-b
+#commitLog 存储路径
+storePathCommitLog=/usr/local/rocketmq/store/broker-b/commitlog
+#消费队列存储路径存储路径
+storePathConsumeQueue=/usr/local/rocketmq/store/broker-b/consumequeue
+#消息索引存储路径
+storePathIndex=/usr/local/rocketmq/store/broker-b/index
+#checkpoint 文件存储路径
+storeCheckpoint=/usr/local/rocketmq/store/broker-b/checkpoint
+#abort 文件存储路径
+abortFile=/usr/local/rocketmq/store/broker-b/abort
+#限制的消息大小
+maxMessageSize=65536
+#flushCommitLogLeastPages=4
+#flushConsumeQueueLeastPages=2
+#flushCommitLogThoroughInterval=10000
+#flushConsumeQueueThoroughInterval=60000
+#Broker 的角色
+#- ASYNC_MASTER 异步复制Master
+#- SYNC_MASTER 同步双写Master
+#- SLAVE
+brokerRole=SYNC_MASTER
+#刷盘方式
+#- ASYNC_FLUSH 异步刷盘
+#- SYNC_FLUSH 同步刷盘
+flushDiskType=SYNC_FLUSH
+#checkTransactionMessageEnable=false
+#发消息线程池数量
+#sendMessageThreadPoolNums=128
+#拉消息线程池数量
+#pullMessageThreadPoolNums=128
+```
+
+```properties
+#暴露的外网IP
+brokerIP1=2号服务器公网IP
+brokerIP2=2号服务器公网IP
+#所属集群名字
+brokerClusterName=rocketmq-cluster
+#broker名字，注意此处不同的配置文件填写的不一样
+brokerName=broker-a
+#0 表示 Master，>0 表示 Slave
+brokerId=1
+#nameServer地址，分号分割
+namesrvAddr=rocketmq-nameserver1:9876;rocketmq-nameserver2:9876
+#在发送消息时，自动创建服务器不存在的topic，默认创建的队列数
+defaultTopicQueueNums=4
+#是否允许 Broker 自动创建Topic，建议线下开启，线上关闭
+autoCreateTopicEnable=true
+#是否允许 Broker 自动创建订阅组，建议线下开启，线上关闭
+autoCreateSubscriptionGroup=true
+#Broker 对外服务的监听端口
+listenPort=11011
+#删除文件时间点，默认凌晨 4点
+deleteWhen=04
+#文件保留时间，默认 48 小时
+fileReservedTime=120
+#commitLog每个文件的大小默认1G
+mapedFileSizeCommitLog=1073741824
+#ConsumeQueue每个文件默认存30W条，根据业务情况调整
+mapedFileSizeConsumeQueue=300000
+#destroyMapedFileIntervalForcibly=120000
+#redeleteHangedFileInterval=120000
+#检测物理文件磁盘空间
+diskMaxUsedSpaceRatio=88
+#存储路径
+storePathRootDir=/usr/local/rocketmq/store/broker-a-s
+#commitLog 存储路径
+storePathCommitLog=/usr/local/rocketmq/store/broker-a-s/commitlog
+#消费队列存储路径存储路径
+storePathConsumeQueue=/usr/local/rocketmq/store/broker-a-s/consumequeue
+#消息索引存储路径
+storePathIndex=/usr/local/rocketmq/store/broker-a-s/index
+#checkpoint 文件存储路径
+storeCheckpoint=/usr/local/rocketmq/store/broker-a-s/checkpoint
+#abort 文件存储路径
+abortFile=/usr/local/rocketmq/store/broker-a-s/abort
+#限制的消息大小
+maxMessageSize=65536
+#flushCommitLogLeastPages=4
+#flushConsumeQueueLeastPages=2
+#flushCommitLogThoroughInterval=10000
+#flushConsumeQueueThoroughInterval=60000
+#Broker 的角色
+#- ASYNC_MASTER 异步复制Master
+#- SYNC_MASTER 同步双写Master
+#- SLAVE
+brokerRole=SLAVE
+#刷盘方式
+#- ASYNC_FLUSH 异步刷盘
+#- SYNC_FLUSH 同步刷盘
+flushDiskType=ASYNC_FLUSH
+#checkTransactionMessageEnable=false
+#发消息线程池数量
+#sendMessageThreadPoolNums=128
+#拉消息线程池数量
+#pullMessageThreadPoolNums=128
+```
+
+### 修改启动脚本
+
+```bash
+vim /usr/local/rocketmq/bin/runbroker.sh
+vim /usr/local/rocketmq/bin/runserver.sh
+```
+
+修改启动时占用内存
+
+```properties
+# 开发环境配置 JVM Configuration
+JAVA_OPT="${JAVA_OPT} -server -Xms256m -Xmx256m -Xmn128m"
 ```
 
 ### 启动
@@ -372,29 +577,326 @@ nohup sh mqnamesrv &
 nohup sh mqbroker -c [broker-a.properties路径] &
 ```
 
+# 项目
+
+## 搭建
+
+### 添加客户端依赖
+
+```xml
+<dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-client</artifactId>
+    <version>4.4.0</version>
+</dependency>
+```
+
+## 生产者
+
+### 消息发送者步骤分析
+
+1. 创建消息生产者producer, 并制定生产者组名
+2. 指定nameserver地址
+3. 启动produrcer
+4. 创建消息对象, 指定Topic主题, Tag和消息体
+5. 发送消息
+6. 关闭生产者producer
+
+## 消费者
+
+### 消息消费者步骤分析
+
+1. 创建消费者consumer, 指定消费者组名
+2. 指定nameserver地址
+3. 订阅主题Topic和Tag
+4. 设置回调函数, 处理消息
+5. 启动消费者
+
+## 基本样例
+
+### 消息发送
+
+#### 发送同步消息
+
+可靠性高, 适用于重要的消息通知
+
+```java
+public static void main(String[] args) throws Exception {
+    // 创建消息生产者producer, 并制定生产者组名
+    DefaultMQProducer producer = new DefaultMQProducer("group1");
+    // 指定nameserver地址
+    producer.setNamesrvAddr("172.17.0.2:9876;172.168.0.3:9876");
+    // 启动produrcer
+    producer.start();
+    for (int i=0; i<10; i++){
+        // 创建消息对象, 指定Topic主题, Tag和消息体
+        Message msg = new Message("base", "tag1", ("hello world"+(i+1)).getBytes());
+        // 发送消息, 并接受返回的发送状态
+        SendResult result = producer.send(msg);
+        System.out.println("发送结果"+result);
+    }
+    // 关闭生产者producer
+    producer.shutdown();
+}
+```
+
+#### 发送异步消息
+
+可靠性低, 适用于对响应时间敏感的场景
+
+```java
+public class AsyncProducer {
+    public static void main(String[] args) throws Exception {
+        DefaultMQProducer producer = new DefaultMQProducer("group1");
+        producer.setNamesrvAddr("172.17.0.2:9876;172.168.0.3:9876");
+        producer.start();
+        for (int i=0; i<10; i++){
+            Message msg = new Message("base", "tag2", ("hello world"+(i+1)).getBytes());
+            // 异步通过回调函数获取响应结果
+            producer.send(msg, new SendCallback() {
+                // 发送成功
+                public void onSuccess(SendResult sendResult) {
+                    System.out.println("发送结果:" + sendResult);
+                }
+                // 发送失败
+                public void onException(Throwable throwable) {
+                    System.out.println("发送异常:" + throwable);
+                }
+            });
+        }
+        // 立刻shutdown可能会导致回调函数, 没有等待到响应结果报异常 
+        // Thread.sleep(2000);
+        producer.shutdown();
+    }
+}
+
+```
+
+#### 发送单向消息
+
+不接受响应, 适用于不关心发送结果的场景
+
+```java
+public class OnewayProducer {
+    public static void main(String[] args) throws Exception {
+        DefaultMQProducer producer = new DefaultMQProducer("group1");
+        producer.setNamesrvAddr("172.17.0.2:9876;172.168.0.3:9876");
+        producer.start();
+        for (int i=0; i<10; i++){
+            Message msg = new Message("base", "tag1", ("hello world"+(i+1)).getBytes());
+            producer.sendOneway(msg);
+        }
+        producer.shutdown();
+    }
+}
+```
+
+### 消息接收
+
+启动后会一直监听订阅的消息
+
+```java
+public class Consumer {
+    public static void main(String[] args) throws Exception {
+        // Push为推的模式
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("group1");
+        consumer.setNamesrvAddr("172.17.0.2:9876;172.17.0.3:9876");
+        // 订阅消息
+        consumer.subscribe("base", "tag1");
+        // 订阅tag1 和tag2
+        //consumer.subscribe("base", "tag1 || tage2");
+        // 订阅t全部
+        //consumer.subscribe("base", "*");
+        // 设置监听器
+        consumer.registerMessageListener(new MessageListenerConcurrently() {
+            // 回调, 获取订阅的数据
+            public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> list, 												ConsumeConcurrentlyContext consumeConcurrentlyContext) {
+                for (MessageExt msg: list) {
+                    System.out.println(new String(msg.getBody()));
+                }
+                return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+            }
+        });
+        // 启动
+        consumer.start();
+
+    }
+}
+```
+
+#### 广播模式
+
+多个消费者, 接收的mq内容相同
+
+```java
+consumer.setMessageModel(MessageModel.BROADCASTING);
+```
+
+#### 负载均衡模式(默认)
+
+多个消费者, 均分mq消息
+
+## 顺序消息
+
+broker中可能有多个队列,  生产者发送多条消息, broker以轮询的方式将消息分给不同的队列, 
+
+消费者在消费时, 使用多线程的方式去消费, 默认无法保证多个队列的消息是有序的,
+
+为保证消息的顺序, 需要将消息全部放到一个队列中
+
+实体
+
+```java
+public class OrderStep {
+    private long orderId;
+    private String desc;
+
+    public long getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(long orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getDesc() {
+        return desc;
+    }
+
+    public void setDesc(String desc) {
+        this.desc = desc;
+    }
+
+    @Override
+    public String toString() {
+        return "OrderStep{" +
+                "orderId=" + orderId +
+                ", desc='" + desc + '\'' +
+                '}';
+    }
+
+    public static List<OrderStep> buildOrders(){
+        List<OrderStep> orderList = new ArrayList<OrderStep>();
+
+        OrderStep orderDemo = new OrderStep();
+        orderDemo.setOrderId(1039L);
+        orderDemo.setDesc("创建");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(1065L);
+        orderDemo.setDesc("创建");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(1039L);
+        orderDemo.setDesc("付款");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(7235L);
+        orderDemo.setDesc("创建");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(1065L);
+        orderDemo.setDesc("付款");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(7235L);
+        orderDemo.setDesc("付款");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(1065L);
+        orderDemo.setDesc("完成");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(1039L);
+        orderDemo.setDesc("推送");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(7235L);
+        orderDemo.setDesc("完成");
+        orderList.add(orderDemo);
+
+        orderDemo = new OrderStep();
+        orderDemo.setOrderId(1039L);
+        orderDemo.setDesc("完成");
+        orderList.add(orderDemo);
+
+        return orderList;
+    }
+
+}
+```
 
 
 
+### 消息发送
 
+```java
+public class producer {
+    public static void main(String[] args) throws Exception {
+        DefaultMQProducer producer = new DefaultMQProducer("group1");
+        producer.setNamesrvAddr("172.17.0.2:9876;172.168.0.3:9876");
+        producer.start();
+        List<OrderStep> orderSteps = OrderStep.buildOrders();
+        int i = 0;
+        for (OrderStep order: orderSteps) {
+            Message msg = new Message("OrderTopic", "order", ++i+"",(order+"").getBytes());
+            /*
+            *  参数
+            *  消息队列选择器
+            *  选择队列的业务标识
+            * */
+            SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
+                // 选择队列
+                public MessageQueue select(List<MessageQueue> list, Message message, Object o) {
+                    Long orderId =  (Long) o;
+                    long index = orderId % list.size();
+                    return list.get((int) index);
+                }
+            }, order.getOrderId());
+            System.out.println("发送结果:" + sendResult);
+            Thread.sleep(1000);
+        }
 
+        producer.shutdown();
+    }
+}
+```
 
+### 消息接收
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```java
+public class Consumer {
+    public static void main(String[] args) throws Exception {
+        // Push为推的模式
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("group1");
+        consumer.setNamesrvAddr("172.17.0.2:9876;172.17.0.3:9876");
+        // 订阅消息
+        consumer.subscribe("OrderTopic", "*");
+        // 设置监听器
+        // 使用MessageListenerOrderly, 在消费时, 会对一个队列, 使用一个线程去处理
+        consumer.registerMessageListener(new MessageListenerOrderly() {
+            public ConsumeOrderlyStatus consumeMessage(List<MessageExt> list, ConsumeOrderlyContext consumeOrderlyContext) {
+                for (MessageExt msg: list
+                     ) {
+                    System.out.println("线程名称: " + Thread.currentThread().getName() + "消费消息: " + new String(msg.getBody()));
+                }
+                return ConsumeOrderlyStatus.SUCCESS;
+            }
+        });
+        // 启动
+        consumer.start();
+        System.out.println("消费者启动");
+    }
+}
+```
 
 
 
