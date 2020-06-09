@@ -577,6 +577,22 @@ nohup sh mqnamesrv &
 nohup sh mqbroker -c [broker-a.properties路径] &
 ```
 
+## 监控平台
+
+### 安装
+
+```bash
+docker pull styletang/rocketmq-console-ng
+```
+
+### 启动
+
+```bash
+docker run -e "JAVA_OPTS=-Drocketmq.namesrv.addr=[namersrv地址]:9876;[namersrv地址]:9876; -Dcom.rocketmq.sendMessageWithVIPChannel=false" -p 8080:8080 -t styletang/rocketmq-console-ng
+```
+
+
+
 # 项目
 
 ## 搭建
