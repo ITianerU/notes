@@ -591,8 +591,6 @@ docker pull styletang/rocketmq-console-ng
 docker run -e "JAVA_OPTS=-Drocketmq.namesrv.addr=[namersrv地址]:9876;[namersrv地址]:9876; -Dcom.rocketmq.sendMessageWithVIPChannel=false" -p 8080:8080 -t styletang/rocketmq-console-ng
 ```
 
-
-
 # 项目
 
 ## 搭建
