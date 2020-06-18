@@ -635,23 +635,25 @@ docker run -e "JAVA_OPTS=-Drocketmq.namesrv.addr=[namersrv地址]:9876;[namersrv
 可靠性高, 适用于重要的消息通知
 
 ```java
-public static void main(String[] args) throws Exception {
-    // 创建消息生产者producer, 并制定生产者组名
-    DefaultMQProducer producer = new DefaultMQProducer("group1");
-    // 指定nameserver地址
-    producer.setNamesrvAddr("172.17.0.2:9876;172.168.0.3:9876");
-    // 启动produrcer
-    producer.start();
-    for (int i=0; i<10; i++){
-        // 创建消息对象, 指定Topic主题, Tag和消息体
-        Message msg = new Message("base", "tag1", ("hello world"+(i+1)).getBytes());
-        // 发送消息, 并接受返回的发送状态
-        SendResult result = producer.send(msg);
-        System.out.println("发送结果"+result);
+public class SyncProducer {
+    public static void main(String[] args) throws Exception {
+        // 创建消息生产者producer, 并制定生产者组名
+        DefaultMQProducer producer = new DefaultMQProducer("group1");
+        // 指定nameserver地址
+        producer.setNamesrvAddr("172.17.0.2:9876;172.168.0.3:9876");
+        // 启动produrcer
+        producer.start();
+        for (int i=0; i<10; i++){
+            // 创建消息对象, 指定Topic主题, Tag和消息体
+            Message msg = new Message("base", "tag1", ("hello world"+(i+1)).getBytes());
+            // 发送消息, 并接受返回的发送状态
+            SendResult result = producer.send(msg);
+            System.out.println("发送结果"+result);
+        }
+        // 关闭生产者producer
+        producer.shutdown();
     }
-    // 关闭生产者producer
-    producer.shutdown();
-}
+}	
 ```
 
 #### 发送异步消息
@@ -853,7 +855,7 @@ public class OrderStep {
 ### 消息发送
 
 ```java
-public class producer {
+public class Producer {
     public static void main(String[] args) throws Exception {
         DefaultMQProducer producer = new DefaultMQProducer("group1");
         producer.setNamesrvAddr("172.17.0.2:9876;172.168.0.3:9876");
@@ -912,31 +914,227 @@ public class Consumer {
 }
 ```
 
+## 延迟消息
 
+使用限制， 延迟的秒数是设置好的， 只需制定延迟level
 
+```java
+private String messageDelayLevel = "1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h";
+```
 
+```java
+public class Producer {
+    public static void main(String[] args) throws MQClientException, RemotingException, InterruptedException, MQBrokerException {
+        DefaultMQProducer producer = new DefaultMQProducer("group1");
+        producer.setNamesrvAddr("172.17.0.2:9876");
+        producer.start();
+        for (int i=0; i<10; i++){
+            Message message = new Message("DelayTopic", "Tag1", ("Hello World" + i).getBytes());
+            // 设定延迟级别
+            message.setDelayTimeLevel(3);
+            SendResult result = producer.send(message);
+            System.out.println("发送结果：" + result);
+            TimeUnit.SECONDS.sleep(1);
+        }
+        producer.shutdown();
+    }
+}
+```
 
+## 批量发送
 
+```java
+public class Producer {
+    public static void main(String[] args) throws MQClientException, RemotingException, InterruptedException, MQBrokerException {
+        DefaultMQProducer producer = new DefaultMQProducer("group1");
+        producer.setNamesrvAddr("172.17.0.2:9876");
+        producer.start();
+        List<Message> list = new ArrayList<>();
+        list.add(new Message("base", "Tag1", ("Hello World" + 1).getBytes()))
+        list.add(new Message("base", "Tag1", ("Hello World" + 2).getBytes()))
+        list.add(new Message("base", "Tag1", ("Hello World" + 3).getBytes()))
+        SendResult result = producer.send(list);  
+        System.out.println("发送结果：" + result);
+        producer.shutdown();
+    }
+}
+```
 
+## 过滤消息
 
+消费端过滤消息， 消费过滤后的消息
 
+- tag过滤
 
+```java
+// 消费指定tag
+consumer.subscribe("topic", "tag1");
+// 消费多个tag消息
+consumer.subscribe("topic", "tag1 || tag2");
+// 消费全部tag消息
+consumer.subscribe("topic", "*");
+```
 
+- 属性过滤
 
+  支持SQL基本语法
 
+```java
+// 生产者
+Message msg = new Message("base", "Tag", ("Hello World" + 1).getBytes());
+// 自定义属性i， 值为10
+msg.putUserProperty("i", "10");
+```
 
+```java
+// 消费者, 过滤i大于5的数据
+consumer.subscribe("topic", MessageSelector.bySql("i>5"));
+```
 
+## 事务消息
 
+生产者发送事务控制消息(半消息)给MQ服务, MQ给出响应, 然后生产者去处理本地事务，可能会执行commit或者rollback，commit后， 消费者可以消费， rollback后，会将消息回滚消费者无法消费。
 
+生产者超时未处理时， MQ服务会回调生产者的方法， 查看消息状态，再进行提交或回滚
 
+#### 事务消息状态
 
+- TransactionStatus.CommitTransaction: 提交事务
+- TransactionStatus.RollbackTranSaction: 回滚事务
+- TransactionStatus.Unknown: 中间状态
 
+```java
+public class Producer {
+    public static void main(String[] args) throws MQClientException, InterruptedException {
+        TransactionMQProducer producer = new TransactionMQProducer("group1");
+        producer.setNamesrvAddr("152.136.157.189:9876");
+        // 事务监听器
+        producer.setTransactionListener(new TransactionListener() {
+            // 执行本地事务
+            @Override
+            public LocalTransactionState executeLocalTransaction(Message message, Object o) {
+                if (message.getTags().equals("tag1")){
+                    return LocalTransactionState.COMMIT_MESSAGE;
+                }else if(message.getTags().equals("tag2")){
+                    return LocalTransactionState.ROLLBACK_MESSAGE;
+                }else{
+                    return LocalTransactionState.UNKNOW;
+                }
+            }
+            // 回查
+            @Override
+            public LocalTransactionState checkLocalTransaction(MessageExt messageExt) {
+                System.out.println("消息"+messageExt.getTags());
+                return LocalTransactionState.COMMIT_MESSAGE;
+            }
+        });
+        String[] tags = {"tag1", "tag2", "tag3"};
+        producer.start();
+        for (int i=0; i<3; i++){
+            // 创建消息对象, 指定Topic主题, Tag和消息体
+            Message msg = new Message("TransactionTopic", tags[i], ("hello world"+(i+1)).getBytes());
+            // 发送消息, 并接受返回的发送状态
+            SendResult result = producer.sendMessageInTransaction(msg, null);
+            System.out.println("发送结果"+result);
+            TimeUnit.SECONDS.sleep(1);
+        }
+    }
+}
+```
 
+# 项目实战
 
+## 整合springboot
 
+### producer
 
+#### 添加依赖
 
+```xml
+<dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-spring-boot-starter</artifactId>
+    <version>2.1.0</version>
+</dependency>
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.12</version>
+</dependency>
+```
 
+#### 配置文件
 
+```yml
+rocketmq:
+  name-server: namesrv地址:9876
+  producer:
+    group: my-group
+```
 
+#### 测试连接
 
+```java
+@RunWith(SpringRunner.class)
+// RocketmqProducerApplication.class 是项目启动类
+@SpringBootTest(classes = {RocketmqProducerApplication.class})
+@Slf4j
+public class RocketmqProducerApplicationTests {
+
+    @Autowired
+    private RocketMQTemplate rocketMQTemplate;
+
+    @Test
+    public void testSendMessage(){
+        rocketMQTemplate.convertAndSend("springboot-rocketmq", "Hello springboot rocketmq");
+        log.info("消息发送成功");
+    }
+}
+```
+
+### consumer
+
+#### 添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-spring-boot-starter</artifactId>
+    <version>2.1.0</version>
+</dependency>
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.12</version>
+</dependency>
+```
+
+#### 配置文件
+
+```yml
+rocketmq:
+  name-server: 152.136.157.189:9876
+  consumer:
+    group: my-group
+```
+
+#### 监听消息
+
+```java
+// consumeMode是消费模式， 并发消费/顺序消费
+@RocketMQMessageListener(topic = "springboot-rocketmq", consumeMode = ConsumeMode.CONCURRENTLY, consumerGroup = "${rocketmq.consumer.group}")
+@Component
+public class Consumer implements RocketMQListener<String> {
+
+    @Override
+    public void onMessage(String s) {
+        System.out.println("接受到消息" + s);
+    }
+}
+```
+
+### 
