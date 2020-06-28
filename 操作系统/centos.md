@@ -568,18 +568,36 @@ service network restart
 ifconfig
 ```
 
-修改ip地址
+临时修改ip地址
 
-```
+```bash
 # 临时修改, 重启丢失
 ifconfig [网卡名] [ip地址]
+```
+
+永久修改ip地址
+
+```bash
+# vim 编辑网卡文件
+vim /etc/sysconfig/network-scripts/ifcfg-ens33
+
+# 注掉
+#BOOTPROTO=dhcp
+# 添加
+BOOTPROTO=static
+IPADDR=ip
+NETMASK=掩码
+GATEWAY=网关
+
+# 重启网络服务
+service network restart
 ```
 
 **ping**
 
 测试网络连接
 
-```
+```bash
 ping  [ip]
 ```
 
