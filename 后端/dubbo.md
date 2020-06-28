@@ -156,3 +156,116 @@ public class UserServiceImpl implements IUserService {
 访问服务，  http:服务器ip:8080/dubbo-admin
 
 访问账号/密码   root/root
+
+# consumer
+
+## 依赖
+
+```xml
+<!-- web -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<!-- springboot -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter</artifactId>
+    <exclusions>
+        <exclusion>
+            <groupId>log4j-to-slf4j</groupId>
+            <artifactId>org.apache.logging.log4j</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-test</artifactId>
+    <scope>test</scope>
+    <exclusions>
+        <exclusion>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+<!-- dubbo -->
+<dependency>
+    <groupId>com.alibaba.spring.boot</groupId>
+    <artifactId>dubbo-spring-boot-starter</artifactId>
+    <version>2.0.0</version>
+</dependency>
+<!-- zookeeper -->
+<dependency>
+    <groupId>org.apache.zookeeper</groupId>
+    <artifactId>zookeeper</artifactId>
+    <version>3.6.1</version>
+</dependency>
+<dependency>
+    <groupId>com.101tec</groupId>
+    <artifactId>zkclient</artifactId>
+    <version>0.11</version>
+    <exclusions>
+        <exclusion>
+            <groupId>slf4j-log4j12</groupId>
+            <artifactId>org.slf4j</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+<!-- 服务api -->
+<dependency>
+    <groupId>com.itianeru</groupId>
+    <artifactId>rocketmq-dubbo-interface</artifactId>
+    <version>1.0-SNAPSHOT</version>
+</dependency>
+```
+
+## 配置文件
+
+```yml
+spring:
+  application:
+    name: rocketmq-dubbo-consumer
+  dubbo:
+    application:
+      # 当前应用名称，用于注册中心计算应用间依赖关系
+      name: rocketmq-dubbo-consumer
+    registry:
+      # 注册中心服务器地址
+      address: zookeeper://192.168.2.118:2181;zookeeper://192.168.2.118:2182;zookeeper://192.168.2.118:2183
+```
+
+## 启动类
+
+启动类添加注解， 启用dubbo
+
+```java
+@EnableDubboConfiguration
+```
+
+## controller
+
+```java
+@RestController
+@RequestMapping("user")
+public class UserController {
+	
+    // 这里使用dubbo的注解注入服务
+    @Reference
+    private IUserService userService;
+
+    /**
+     * 测试
+     *
+     * @param name 姓名
+     * @return java.lang.String
+     */
+    @RequestMapping("say")
+    public String sayHello(String name){
+        return userService.sayHello(name);
+    }
+
+}
+```
+
+# 

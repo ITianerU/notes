@@ -534,7 +534,7 @@ docker run -it --name container02 --volumes-from container01 centos
   -  --name mysql    # 容器命名
 
   -  -v /mysql/conf:/etc/mysql/conf.d   # 主机与容器共享配置文件
-  -  -v /mysql/logs:logs    # 主机与容器共享日志
+  -  -v /mysql/logs:/logs    # 主机与容器共享日志
   -  -v /mysql/data:/var/lib/mysql   # 主机与容器共享数据
   -  -e MYSQL_ROOT_PASSWORD=123456   # 初始化root用户密码
   -  -d mysql   # 后台运行
