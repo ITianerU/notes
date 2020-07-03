@@ -202,3 +202,9 @@ firewall-cmd --zone=public --add-port=11012/tcp --permanent
 firewall-cmd --reload
 ```
 
+## 启动监控平台
+
+```bash
+docker run -e "JAVA_OPTS=-Drocketmq.namesrv.addr=172.17.0.2:9876;172.17.0.3:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false" -p 8080:8080 -t styletang/rocketmq-console-ng
+```
+
