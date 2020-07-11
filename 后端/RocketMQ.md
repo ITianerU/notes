@@ -591,6 +591,182 @@ docker pull styletang/rocketmq-console-ng
 docker run -e "JAVA_OPTS=-Drocketmq.namesrv.addr=[namersrv地址]:9876;[namersrv地址]:9876; -Dcom.rocketmq.sendMessageWithVIPChannel=false" -p 8080:8080 -t styletang/rocketmq-console-ng
 ```
 
+# 消息存储
+
+分布式队列因为有高可靠性的要求， 所以数据要进行持久化存储
+
+## 存储流程
+
+1. 生产者发送消息给mq
+2. mq将消息持久化存储
+3. mq给生产者一个确认
+4. mq给消费者发送消息
+5. 消费者在本地处理完之后， 给mq一个确认
+6. mq将存储的消息删除
+
+## 持久化方式
+
+- 关系型数据库
+
+- 文件系统（主流）
+
+  在写入时，使用顺序写提高速度， 在发送时， 使用零拷贝省略  “数据->内核态->用户态->网络驱动内核->网卡->数据” 中的用户态，提高速度  
+
+  - commitlog
+
+    mq将消息存储到commitlog， 该文件默认有1G的大小， 当1G不够存储时， 会再创建一个新的commitlog文件
+
+  - consumerQueue
+
+    消费逻辑队列， 存储消息在commitlog的索引， 加快mq读取消息的速度
+
+    consumer在消费时， mq会通过索引快速的去commitlog中查找消息
+
+    如果comsumerQueue丢失，  mq会通过commitlog将consumerQueue还原
+
+  - indexFile（不常用）
+
+    通过key或者时间区， 去查commitlog
+
+- 刷盘机制
+
+  - 同步刷盘
+
+    mq接到消息后， 先将消息存储到内存中，然后该线程阻塞， 通知刷盘线程， 刷盘线程将数据存储到磁盘中， 存储成功后， 会唤醒阻塞的线程， 然后对生产者做出响应
+
+  - 异步刷盘（推荐）
+
+    与同步刷盘相比， 不阻塞当前线程， 直接对生产者做出响应， 当内存里的消息积累到一定程度时，统一触发写入磁盘的操作，快速写入
+
+  - 配置
+
+    ```properties
+    # broker.properties
+    
+    # 同步刷盘
+    flushDiskType=SYNC_FLUSH
+    # 异步刷盘
+    flushDiskType=ASYNC_FLUSH
+    ```
+
+    
+
+### 速度
+
+文件系统 > 关系型数据库
+
+# 高可用性
+
+## 消费者
+
+消费者无需指定从master 或者slave 读取消息，  系统会自动切换
+
+## 生产者
+
+建立broker集群， 保证在一个broker挂掉时，mq可正常写入
+
+# 消息主从复制
+
+## 同步复制（推荐）
+
+master和slave都写成功， 才给客户端反馈写成功
+
+优点：更安全， master如果挂掉， slave有全部的备份数据
+
+缺点： 数据量大时， 有写入延迟
+
+## 异步复制
+
+master写成功， 就会给客户端反馈写成功
+
+优点： 低延迟
+
+缺点： 可靠性低， 可能会丢失数据
+
+## 配置
+
+```properties
+# broker.properties
+
+# 异步复制
+brokerRole=ASYNC_MASTER
+# 同步复制
+brokerRole=SYNC_MASTER
+# 从节点， 配置SLAVE
+brokerRole=SLAVE
+```
+
+# 负载均衡
+
+## 生产者
+
+使用轮询方式， 让消息散落到不同的queue上， queue又会散落到不同的broker上
+
+内部已经实现
+
+## 消费者
+
+### 集群模式（默认, 负载俊航）
+
+只消费一次
+
+每一个消费者，至少需要绑定一个queue， 如果消费者超出queue数量， 会触发Rebalance重新分配
+
+### 广播模式
+
+每个服务都消费一次
+
+# 消息重试
+
+保障消息，一定会被消费掉
+
+## 顺序消息重试
+
+对于顺序消息， 当消费者消费失败， 消费队列会自动的不断的进行消费重试（每次间隔1秒，顺序消费， 前一个消息没有消费完成， 无法进行下次消费）， 这时， 应用会出现消息消费被阻塞的情况。
+
+因此在使用顺序时， 务必保证应用程序能够及时监控到并处理消费失败的情况， 避免阻塞的现象发生
+
+## 无序消息重试
+
+仅对集群方式有效， 对广播方式无效
+
+- 重试次数
+
+  最多允许重试16次， 每一次间隔， 时间会越来越长， 超过16次后， 不会在被消费， 进入死信队列
+
+## 配置
+
+```java
+？？？
+```
+
+# 死信队列
+
+存放消费失败的消息，  默认保存三天
+
+可在控制台触发死信队列， 再次进行消费
+
+# 消费幂等性
+
+在互联网应用中， 可能会出现重复的消息， 不管消费多少次， 最终的结果是相同的， 这就是消费幂等性
+
+## 处理方式
+
+```java
+// 发送方， 设置业务key
+Message message = new Message();
+message.setKey("xxx");
+SendResult s = producer.send(message);
+
+
+// 消费方对key进行判断是否被消费过， 已消费过就不处理， 为消费过， 消费后，将该key存储
+String key = message.getKey();
+```
+
+
+
+
+
 # 项目
 
 ## 搭建
@@ -1123,6 +1299,12 @@ rocketmq:
 ```
 
 #### 监听消息
+
+RocketMQListener<？>   泛型可用
+
+- String
+- Message
+- MessageExt   比Message多了消息id
 
 ```java
 // consumeMode是消费模式， 并发消费/顺序消费
