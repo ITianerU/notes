@@ -1,6 +1,23 @@
-# 快捷键
+[TOC]
 
-## 注释模板设置
+-----
+
+# 常用设置
+
+## 隐藏文件
+
+### 路径
+
+- file -> settings -> editor -> file types
+- 下方的ignore files and folders 文本框,  填入想要隐藏的文件
+
+-----
+
+
+
+## 快捷键
+
+### 注释模板设置
 
 - file -> settings -> Editor -> Live Templates
 - 点击 +号 -> template group 先创建自定义分组， 名称随意
@@ -38,6 +55,8 @@ Template text：
 ```
 
 点击Edit variables，  在params参数， 选择方法 methodParameters(), returns参数， 选择方法methodReturnType()
+
+-----
 
 # 插件
 
