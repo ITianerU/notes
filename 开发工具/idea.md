@@ -23,7 +23,7 @@
 - 点击 +号 -> template group 先创建自定义分组， 名称随意
 - 选择新创建的分组， 点击 +号 -> live Template
 
-### 类注释模板
+#### 类注释模板
 
 Abbreviation: c        Description: 类注释快捷键   c+tab
 
@@ -38,7 +38,7 @@ Template text：
 
 点击Edit variables，  在date参数， 选择方法 date()
 
-### 方法注释模板
+#### 方法注释模板
 
 Abbreviation: m        Description: 方法注释快捷键   /m+tab
 
@@ -55,6 +55,16 @@ Template text：
 ```
 
 点击Edit variables，  在params参数， 选择方法 methodParameters(), returns参数， 选择方法methodReturnType()
+
+### 快捷键
+
+#### 生成调用方法的返回值变量
+
+```
+ctrl+alt+v
+```
+
+
 
 -----
 

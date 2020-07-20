@@ -174,7 +174,7 @@ Consumer消费消息, 也要先向Name Server询问, 接收哪个Broker的消息
 
   - **缺点**
 
-    单台机器宕机期间,  这台机器上未被消费的消息在机器回复之前, 不可订阅, 消息实时形受到影响
+    单台机器宕机期间,  这台机器上未被消费的消息在机器恢复之前, 不可订阅, 消息实时形受到影响
 
 - **多Master模式多Slave模式(异步)**
 
@@ -627,8 +627,8 @@ docker run -e "JAVA_OPTS=-Drocketmq.namesrv.addr=[namersrv地址]:9876;[namersrv
   - indexFile（不常用）
 
     通过key或者时间区， 去查commitlog
-
-- 刷盘机制
+    
+## 刷盘机制
 
   - 同步刷盘
 
@@ -650,6 +650,7 @@ docker run -e "JAVA_OPTS=-Drocketmq.namesrv.addr=[namersrv地址]:9876;[namersrv
     ```
 
     
+
 
 ### 速度
 
@@ -706,7 +707,7 @@ brokerRole=SLAVE
 
 ## 消费者
 
-### 集群模式（默认, 负载俊航）
+### 集群模式（默认, 负载均衡）
 
 只消费一次
 
@@ -759,7 +760,7 @@ message.setKey("xxx");
 SendResult s = producer.send(message);
 
 
-// 消费方对key进行判断是否被消费过， 已消费过就不处理， 为消费过， 消费后，将该key存储
+// 消费方对key进行判断是否被消费过， 已消费过就不处理， 未消费过， 消费后，将该key存储
 String key = message.getKey();
 ```
 
