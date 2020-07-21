@@ -358,7 +358,9 @@ throw new MyException();
 
 ## 多线程
 
-### Thread
+### 三种实现方式
+
+#### Thread
 
 #### 创建
 
@@ -446,7 +448,7 @@ class WebDownloader{
 }
 ```
 
-### Runnable
+#### Runnable
 
 #### 创建
 
@@ -535,7 +537,7 @@ class WebDownloader{
 }
 ```
 
-### Callable
+#### Callable
 
 - **实现Callable接口， 需要返回值类型**
 - **重写call方法， 需要抛出异常**
@@ -615,11 +617,305 @@ class WebDownloader{
 }
 ```
 
+### 线程状态
+
+Thread.State
+
+- **创建(新生)** 
+
+  ```java
+  // 创建线程对象, 进入新生状态
+  Thread thread = new Thread();
+  ```
+
+- **就绪**  
+
+  ```java
+  // 进入就绪状态
+  thread.start();
+  ```
+
+- **运行**
+
+  cpu调度进入运行状态
+
+- **阻塞**
+
+  阻塞解除后, 会从新进入就绪状态
+
+  ```java
+  // 进入阻塞状态
+  thread.sleep();
+  // 或
+  thread.wait();
+  ```
+
+- **死亡**
+
+  线程中断或者结束, 进入死亡状态, 不能再次启动
+
+### 线程方法
+
+- **setPriority(int newPriority)**
+
+  更改线程优先级, 优先级高的线程, 容易被cpu执行
+
+  最大值为10;
+
+  ```
+  Thread thread = new Thread(testPriority);
+  thread.setPriority(10);
+  thread.start();
+  ```
+
+  
+
+- **static void sleep(long millis)**
+
+  在指定毫秒数内让当前线程体休眠
+
+  ```java
+  Thread.sleep()
+  ```
+
+- **void join()**
+
+  等待该线程终止再执行其他线程
+
+  ```java
+  public void statci main(String[] arg){
+      TestJoin testJoin = new TestJoin();
+      Thread thread = new Thread(testJoin)
+      thread.start();
+      for(int i=0; i<100; i++){
+          if(i == 50){
+              // 插队
+              thread.join();
+          }
+          System.out.print("main:" + i);
+      }
+  }
+  
+  ```
+
+- **static void yield()**
+
+  暂停当前正在执行的线程对象, 并执行其他线程
+
+  ```java
+  // 让线程从运行状态, 变回就绪状态, cpu会重新进行调度, 有可能cpu又选择当前线程进行运行, 导致yield失败, 
+  public void run(){
+      System.out.print("start");
+      Thread.yield();
+      System.out.print("end");
+  }
+  
+  ```
+
+- **void interrupt()**
+
+  中断线程(不推荐)
+
+- **boolean isAlive()**
+
+  测试线程是否处于活动状态
+
+### 线程停止
+
+- 利用循环次数
+- 利用标志位
+- 不要使用stop()或者 interrupt(), 等过时以及JDK不推荐使用的方法
+
+```java
+public class TestStop implements Runnable {
+
+    private boolean flag = true;
+    @Override
+    public void run() {
+        int i = 0;
+        while (flag){
+            System.out.println("run" + i++);
+        }
+    }
+
+    private void stop(){
+        this.flag = false;
+    }
+
+    public static void main(String[] args) {
+        TestStop testStop = new TestStop();
+        new Thread(testStop).start();
+        
+        for (int i = 0; i < 1000; i++) {
+            System.out.println("mian" + i);
+            if (i == 900){
+                testStop.stop();
+                System.out.println("线程停止了");
+            }
+        }
+
+    }
+}
+```
+
+### 守护线程
+
+- 线程分为守护线程和用户线程
+- 虚拟机必须保证用户线程执行完毕
+- 虚拟机不用等待守护线程执行完毕                                                                                                       
+- 如, 后台记录操作日志, 监控内存, 垃圾回收等
+
+```java
+// 守护线程在其他线程结束后, 自动结束
+Thread thread = new Thread(testDaemon);
+thread.setDaemon(true);                                                                        
+thread.start();
+```
+
+### 线程同步
+
+#### synchronized
+
+##### 同步方法
+
+synchronized方法控制对象访问, 每个对象对应一把锁, 每个synchronized方法都必须获得该方法的对象的锁才能执行, 否则线程会阻塞, 方法一旦执行, 就会独占该锁, 直到方法结束才会释放锁, 后面被阻塞的线程才能获得这个锁,继续执行.
+
+```java
+public synchronized void method(int args){}
+```
+
+###### 例子
+
+```java
+package com.itianeru.demo;
+
+/**
+ * @author itianeru
+ * @date 2020/7/19
+ */
+public class BuyTicket implements Runnable{
+
+    private int ticketNums = 10;
+
+    private boolean flag = true;
+
+    public static void main(String[] args) {
+        BuyTicket ticket = new BuyTicket();
+        new Thread(ticket, "路人A").start();
+        new Thread(ticket, "路人B").start();
+        new Thread(ticket, "路人C").start();
+    }
+
+
+    @Override
+    public void run() {
+        while (flag){
+            try {
+                buy();
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    public synchronized void buy(){
+        if (ticketNums <= 0){
+            flag = false;
+            return;
+        }
+
+        System.out.println(Thread.currentThread().getName() + "拿到了"+ ticketNums-- + "票");
+    }
+}
+```
+
+##### 同步块
+
+Obj称为同步监视器
+
+- Obj可以是任何对象, 但是推荐使用共享资源作为同步监视器
+- 同步方法中无需指定同步监视器, 因为同步方法中, 同步监视器就是this, 就是这个对象本身, 或者是class(反射对象).
+
+执行过程
+
+- 第一个线程访问, 锁定同步监视器
+- 第二个线程访问, 发现同步监视器被锁定, 无法访问
+- 一个线程访问结束, 释放同步监视器
+- 第二个线程访问, 发现同步监视器没有锁, 然后锁定并访问
+
+```java
+synchronized(Obj){}
+```
+
+###### 例子
+
+```java
+public class Bank{
+    public static void main(String[] args) {
+        Account account = new Account(100, "结婚基金");
+        Drawing you = new Drawing(account, 50,"你");
+        Drawing me = new Drawing(account, 100,"我");
+        you.start();
+        me.start();
+    }
+}
+
+class Account{
+    int money;
+    String name;
+
+    public Account(int money, String name) {
+        this.money = money;
+        this.name = name;
+    }
+}
+
+class Drawing extends Thread{
+    Account account;
+    int drawingMoney;
+    int nowMoney;
+
+    public Drawing(Account account, int drawingMoney, String name) {
+        super(name);
+        this.drawingMoney = drawingMoney;
+        this.account = account;
+    }
+
+    @Override
+    public void run() {
+        synchronized (account){
+            if(account.money-drawingMoney<0){
+                System.out.println(Thread.currentThread().getName() + "钱不够, 取不了");
+                return;
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            account.money = account.money - drawingMoney;
+
+            nowMoney = nowMoney + drawingMoney;
+
+            System.out.println(account.name + "余额为" + account.money);
+            System.out.println(this.getName() + "手里的钱" + nowMoney);
+        }
+
+    }
+}
+```
+
+
+
 ## 代理
 
-静态代理
+### 静态代理
 
-代理真实对象， 在完成真实对象的功能同时， 并添加新的功能
+代理真实对象， 在完成真实对象的功能, 同时， 并添加新的功能
 
 ```java
 public class StaticProxy{
