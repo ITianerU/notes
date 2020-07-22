@@ -766,7 +766,9 @@ String key = message.getKey();
 
 
 
+# ACL
 
+访问控制,  暂无文档
 
 # 项目
 
@@ -1269,6 +1271,95 @@ public class RocketmqProducerApplicationTests {
 }
 ```
 
+#### 发送消息
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class OrderPaidEvent implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String orderId;
+
+    private BigDecimal paidMoney;
+}
+```
+
+```java
+@SpringBootTest
+@Slf4j
+class SpringbootRocketmqProducerApplicationTests {
+
+    @Value("${rocketmq.producer.topic}")
+    private String rocketmqTopic;
+
+    @Autowired
+    private RocketMQTemplate rocketMQTemplate; 
+	
+    // 发送同步消息
+    // tag写在topic后面用:连接
+    @Test
+    public void testSendSyncMessage() {
+        for (int i=0; i<10; i++){
+            OrderPaidEvent orderPaidEvent = new OrderPaidEvent("sync"+i, new BigDecimal(i*100));
+            SendResult result = rocketMQTemplate.syncSend(rocketmqTopic + ":tag1", orderPaidEvent);
+            log.info(result.toString());
+        }
+    }
+	
+    // 发送异步消息
+    @Test
+    public void testSendASyncMessage() throws InterruptedException {
+        for (int i=0; i<10; i++){
+            OrderPaidEvent orderPaidEvent = new OrderPaidEvent("async:"+i, new BigDecimal(i*100));
+            rocketMQTemplate.asyncSend(rocketmqTopic + ":tag2", orderPaidEvent, new SendCallback() {
+                @Override
+                public void onSuccess(SendResult sendResult) {
+                    log.info("发送结果:" + sendResult);
+                }
+
+                @Override
+                public void onException(Throwable throwable) {
+                    log.error("发送异常:" + throwable);
+                }
+            });
+            TimeUnit.SECONDS.sleep(1);
+        }
+    }
+    // 发送单向消息
+	@Test
+    public void testSendOneWayMessage(){
+        for (int i=0; i<10; i++){
+            OrderPaidEvent orderPaidEvent = new OrderPaidEvent("async:"+i, new BigDecimal(i*100));
+            rocketMQTemplate.sendOneWay(rocketmqTopic + ":tag3", orderPaidEvent);
+        }
+    }
+    // 发送顺序消息, 根据syncSendOrderly()方法第三个参数指定发送到那个队列, 来保证消息顺序
+    @Test
+    public void testSendOrderlyMessage(){
+        List<OrderStep> orderSteps = OrderStep.buildOrders();
+        for (OrderStep orderStep : orderSteps) {
+            SendResult result = rocketMQTemplate.syncSendOrderly(rocketmqTopic + ":tag3", 
+                                               orderStep, orderStep.getOrderId()+"");
+            log.info("发送结果:" + result.toString());
+        }
+    }
+    // 发送延时消息
+    @Test
+    public void testSendDelayMessage(){
+        OrderPaidEvent orderPaidEvent = new OrderPaidEvent("sync", new BigDecimal(100));
+        SendResult result = rocketMQTemplate.syncSend(rocketmqTopic + ":tag1", 
+                                   MessageBuilder.withPayload(orderPaidEvent).build(), 2000,3);
+        System.out.println("发送时间"+System.currentTimeMillis());
+        log.info(result.toString());
+    }
+}
+```
+
+
+
 ### consumer
 
 #### 添加依赖
@@ -1308,7 +1399,16 @@ RocketMQListener<？>   泛型可用
 - MessageExt   比Message多了消息id
 
 ```java
-// consumeMode是消费模式， 并发消费/顺序消费
+/* 
+ * consumeMode消费模式， CONCURRENTLY: 并行消费 ORDERLY: 顺序消费
+ * messageModel消息模型, CLUSTERING: 集群模式(负载均衡)  BROADCASTING: 广播模式
+ * consumeTimeout超时时间
+ * selectorType: 消息选择器类型
+ * selectorExpression: 选择器表达式
+ * accessKey: 账号
+ * secretKey: 密码
+ * consumerGroup: 消费组, 不同的消费组,订阅同一个topic, 会以广播模式接收消息
+ */
 @RocketMQMessageListener(topic = "springboot-rocketmq", consumeMode = ConsumeMode.CONCURRENTLY, consumerGroup = "${rocketmq.consumer.group}")
 @Component
 public class Consumer implements RocketMQListener<String> {
