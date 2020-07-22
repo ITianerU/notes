@@ -909,6 +909,246 @@ class Drawing extends Thread{
 }
 ```
 
+#### lock
+
+- Lock是显式锁， synchronized是隐式锁
+- Lock只有代码块锁
+- 使用Lock锁， JVM将花费较少的时间来调度线程， 性能更好， 并且有更好的扩展性
+- 优先使用顺序： Lock -> 同步代码块 -> 同步方法
+
+```java
+public class TestLock {
+    public static void main(String[] args) {
+        TestLock2 testLock2 = new TestLock2();
+        new Thread(testLock2).start();
+        new Thread(testLock2).start();
+        new Thread(testLock2).start();
+    }
+}
+
+class TestLock2 implements Runnable {
+    private int ticketNums = 10;
+    // 可重用锁
+    private final ReentrantLock lock = new ReentrantLock();
+    @Override
+    public void run() {
+        while (true){
+            lock.lock();
+            try {
+                if (ticketNums>0){
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println(Thread.currentThread().getName() + ":"+ticketNums--);
+                }else{
+                    break;
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+}
+```
+
+
+
+### 死锁
+
+避免死锁的四个必要条件
+
+- 互斥条件： 一个资源每次只能被一个进程使用
+- 请求与保持条件： 一个进程因请求资源而阻塞时， 对已获得的资源保持不放
+- 不剥夺条件： 进程已获得的资源， 在未使用完之前， 不能强行剥夺
+- 循环等待条件： 若干进程之间形成一种头尾相接的循环等待资源关系
+
+只要避免其中一个， 就可避免死锁
+
+### 线程协作
+
+- wait():  表示线程一直等待， 直到其他线程通知， 与sleep不同， 会释放锁
+- notify(): 唤醒一个处于等待状态的线程
+- notifyAll(): 唤醒同一个对象上所有调用wait方法等待的线程， 优先级别高的线程优先调度
+
+#### 管程法
+
+```java
+// 测试生产者消费模型， 利用缓冲区解决： 管程法
+public class testPC {
+    public static void main(String[] args) {
+        SynContainer container = new SynContainer();
+        new Producter(container).start();
+        new Consumer(container).start();
+    }
+}
+
+
+// 生产者
+class Producter extends Thread{
+    SynContainer container;
+    public Producter(SynContainer container){
+        this.container = container;
+    }
+    @Override
+    public void run(){
+        for (int i=1; i<=100; i++){
+            System.out.println("生产了" + i + "只鸡");
+            try {
+                container.push(new Chicken(i));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+}
+
+// 消费者
+class Consumer extends Thread{
+    SynContainer container;
+    public Consumer(SynContainer container){
+        this.container = container;
+    }
+    @Override
+    public void run() {
+        for (int i = 1; i <= 100; i++) {
+            try {
+                Chicken chicken = container.pop();
+                System.out.println("消费的鸡编号为-->"+chicken.getId());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+class Chicken{
+    private int id;
+    public Chicken(int id) {
+        this.id = id;
+    }
+    public int getId() {
+        return id;
+    }
+}
+
+class SynContainer{
+    Chicken[] chickens = new Chicken[10];
+    int count = 0;
+    public synchronized void push(Chicken chicken) throws InterruptedException {
+        if (count == chickens.length){
+            this.wait();
+        }
+        chickens[count] = chicken;
+        count++;
+        this.notifyAll();
+    }
+    public synchronized Chicken pop() throws InterruptedException {
+        if (count == 0){
+            this.wait();
+        }
+        count--;
+        Chicken chicken = chickens[count];
+        this.notifyAll();
+        return chicken;
+    }
+}
+```
+
+#### 信号灯法
+
+```java
+public class testPC2 {
+    public static void main(String[] args) {
+        TV tv = new TV();
+        new Player(tv).start();
+        new Watcher(tv).start();
+    }
+}
+class Player extends Thread{
+    TV tv;
+    public Player(TV tv){
+        this.tv = tv;
+    }
+    @Override
+    public void run() {
+        for (int i = 0; i < 20; i++) {
+            if (i%2 == 0){
+                this.tv.play("快乐大本营播放中");
+            }else{
+                this.tv.play("广告···");
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+class Watcher extends Thread{
+    TV tv;
+    public Watcher(TV tv){
+        this.tv = tv;
+    }
+    @Override
+    public void run() {
+        for (int i = 0; i < 20; i++) {
+            this.tv.watch();
+        }
+    }
+}
+
+class TV{
+    String voice;
+    boolean flag = true;
+    public synchronized void play(String voice){
+        System.out.println("演员表演了" + voice);
+        this.notifyAll();
+        this.voice = voice;
+        this.flag = !this.flag;
+    }
+    public synchronized void watch(){
+        if (flag){
+            try {
+                this.wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("观看了"+ voice);
+        this.notifyAll();
+        this.flag = !this.flag;
+    }
+}
+```
+
+### 线程池
+
+```java
+public class TestPool {
+    public static void main(String[] args) {
+        // 不推荐使用
+        ExecutorService service = Executors.newFixedThreadPool(10);
+        service.execute(new MyThread());
+        service.execute(new MyThread());
+        service.execute(new MyThread());
+        service.execute(new MyThread());
+        service.execute(new MyThread());
+        service.shutdownNow();
+    }
+}
+
+class MyThread implements Runnable{
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName());
+    }
+}
+```
+
 
 
 ## 代理
@@ -919,23 +1159,18 @@ class Drawing extends Thread{
 
 ```java
 public class StaticProxy{
-
     public static void main(String[] args) {
         MarryCompany marryCompany = new MarryCompany(new You());
         marryCompany.marry();
     }
-
 }
 
 interface Marry{
-
     void marry();
-
 }
 
 // 真实角色
 class You implements Marry{
-
     @Override
     public void marry() {
         System.out.println("结婚了");
@@ -944,24 +1179,19 @@ class You implements Marry{
 
 // 代理角色
 class MarryCompany implements Marry{
-
     private Marry target;
-
     public MarryCompany(Marry target){
         this.target = target;
     }
-
     @Override
     public void marry() {
         before();
         this.target.marry();
         after();
     }
-
     private void after() {
         System.out.println("结束了");
     }
-
     private void before() {
         System.out.println("开始了");
     }
