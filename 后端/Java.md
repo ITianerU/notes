@@ -1278,3 +1278,167 @@ public class Main{
     } 
 }
 ```
+
+## 注解
+
+### 常见注解
+
+- **废弃， 已过时的， 不推荐使用**
+
+```java
+@Deprecated
+```
+
+- **抑制编译器产生警告信息， 添加之后编译器不出现警告**
+
+```java
+SuppressWarnings("all")
+```
+
+### 元注解（4个）
+
+- **用于描述注解的使用范围, 约束注解在(类, 方法, 变量等地方上用)**
+
+```java
+// 可以有多个值, 多个值用{}, 
+// {ElementType.METHOD, ElemetType.TYPE}
+@Target()
+```
+
+- **表示需要在什么级别保存该注释信息， 用于描述注解的生命周期**
+
+```java
+// SOURCE < CLASS < RUNTIME
+// 常用RUNTIME, 表示源码, 编译, 运行时有效,  SOURCE表示在源码时有效,  CLASS表示在源码或编译成类后有效
+// {RetentonPolicy.RUNTIME}
+@Retention()
+```
+
+- **说明该注解被包含在javadoc中**
+
+```java
+@Document
+```
+
+- **说明子类可以继承父类中的该注解**
+
+```java
+@Inherited
+```
+
+### 定义注解
+
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentonPolicy.RUNTIME)
+@Document
+@Inherited
+public @interface MyAnnotation{
+    // 注解参数
+    // 不指定default, 该参数为必填项
+    String name() default "";
+    
+    // 当注解只有一个参数, 并且名为value, 在使用注解时, value参数名可以省略
+    String value();
+}
+```
+
+## 反射机制
+
+### 反射的步骤
+
+1. 获取想要操作的类的Class对象, 该Class对象是反射的核心, 通过它可以调用类的任意方法
+
+   获取Class对象的四种方法, 创建的对象, hashCode都相同
+
+   - 调用对象的getClass方法
+
+     ```java
+     Person person = new Person();
+     Class clazz = person.getClass();
+     ```
+
+   - 调用某个类的class属性
+
+     ```java
+     Class clazz = Person.class;
+     ```
+
+   - 调用Class类中的forName静态方法,  最安全, 性能最好
+
+     ```java
+     Class clazz = Class.forName("包名.类名");
+     ```
+
+   - 基本类型的包装类调用TYPE属性
+
+     ```java
+     Class clazz = Integer.TYPE;
+     ```
+
+     
+
+2. 调用Class对象所对应的类中定义的方法, 这是反射的使用阶段
+
+3. 使用反射API来获取并调用类的属性和方法信息
+
+   获取类的所有方法的信息
+
+   ```java
+   Method[] method = clazz.getDeclaredMethods();
+   ```
+
+   获取类所有成员的属性信息
+
+   ```java
+   Field[] field = clazz.getDeclaredFields();
+   ```
+
+   获取类所有构造方法的信息
+
+   ```java
+   Constructor[] constructor = clazz.getDeclaredConstructors();
+   ```
+
+### 创建对象
+
+- 使用Class对象的newInstanse方法创建Class对象对应类的实例,  这种方法要求该Class对象对应的类有默认的空构造器
+
+  ```java
+  Class clazz = Class.forName("Person");
+  Person p = clazz.newInstance();
+  ```
+
+- 先获取构造方法, 使用构造方法创建对象
+
+  ```java
+  Constructor c = clazz.getDeclaredConstructor(int.class, String,class);
+  Person p = (Person)c.newInstance("老王", 20);
+  ```
+
+### 调用方法
+
+获取对象的Method,  然后通过invoke方法调用
+
+```java
+Class clazz = Class.forName("Person");
+// setName是方法名, String是该方法的参数类型, 有几个写几个
+Method method = clazz.getMethod("setName", String.class);
+Person p = clazz.newInstance();
+method.invoke(p, "老王");
+```
+
+### 关闭安全监测
+
+```java
+Class clazz = Class.forName("Person");
+// 获取name属性
+Field name = clazz.getDeclaredField("name");
+// 如果name属性为私有属性, 需要关闭安全检测
+name.setAccessible(True);
+// 设置值
+name.set(clazz, "lrt");
+```
+
+## 网络编程
+
