@@ -1274,7 +1274,6 @@ public class Main{
         }
         // 简化
         user = a -> System.out.print("Hello World" + a);
-        
     } 
 }
 ```
@@ -1440,5 +1439,10 @@ name.setAccessible(True);
 name.set(clazz, "lrt");
 ```
 
-## 网络编程
+## 网络编程```
 
+## 关键字
+
+### volatile
+
+volatile修饰的变量不允许线程内部缓存和重排序，即直接修改内存
