@@ -1,3 +1,170 @@
+# mybatis
+
+## 依赖
+
+```xml
+<dependency>
+	<groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>5.1.46</version>
+</dependency>
+<dependency>
+	<groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.2</version>
+</dependency>
+```
+
+
+
+## 配置文件
+
+```properties
+driver=com.mysql.jdbc.Driver
+url=jdbc:mysql://ip:3306/databaseName?useSSL=true&useUnicode=true&characterEncodingUTF-8
+username=root
+password=123456
+```
+
+在resources下创建mybatis-config.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!-- 读取配置文件 -->
+    <properties resource="db.properties">
+        <!-- 内部定义属性值, 优先级没有外部引入的高 -->
+    	<property name="username" value="root"></property>
+    </properties>
+	<!-- default选择环境, 每次只能使用一个 -->
+    <environments default="development">
+        <!-- 可配置多个environment, 连接不同的数据库 oracle/mysql等 -->
+        <environment id="development">
+            <!-- transactionManager是事务管理器可选择JDBC或者MANAGED, 配置成MANAGED没有事务 -->
+            <!-- 使用spring + mybatis时, 无需配置transactionManager, spring会使用自带的管理器覆盖配置 -->
+            <transactionManager type="JDBC"/>
+            <!-- type可选值 UNPOOLED(无连接池)|POOLED(有连接池)|JNDI(在EJB等容器中使用, 不常用) -->
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+    
+    
+    <settings>
+        <!-- 打印查询语句 -->
+        <setting name="logImpl" value="STDOUT_LOGGING" />
+        <!-- 控制全局缓存（二级缓存）-->
+        <setting name="cacheEnabled" value="true"/>
+        <!-- 延迟加载的全局开关。当开启时，所有关联对象都会延迟加载。默认 false  -->
+        <setting name="lazyLoadingEnabled" value="true"/>
+        <!-- 当开启时，任何方法的调用都会加载该对象的所有属性。默认 false，可通过select标签的 fetchType来覆盖-->
+        <setting name="aggressiveLazyLoading" value="false"/>
+        <!--  Mybatis 创建具有延迟加载能力的对象所用到的代理工具，默认JAVASSIST -->
+        <!--<setting name="proxyFactory" value="CGLIB" />-->
+        <!-- STATEMENT级别的缓存，使一级缓存，只针对当前执行的这一statement有效 -->
+        <!--
+                <setting name="localCacheScope" value="STATEMENT"/>
+        -->
+        <setting name="localCacheScope" value="SESSION"/>
+    </settings>
+
+    <typeAliases>
+        <typeAlias alias="blog" type="com.wuzz.domain.Blog" />
+    </typeAliases>
+
+<!--    <typeHandlers>
+        <typeHandler handler="com.wuzz.type.MyTypeHandler"></typeHandler>
+    </typeHandlers>-->
+
+    <!-- 对象工厂 -->
+<!--    <objectFactory type="com.wuzz.objectfactory.GPObjectFactory">
+        <property name="wuzz" value="666"/>
+    </objectFactory>-->
+
+<!--    <plugins>
+        <plugin interceptor="com.wuzz.interceptor.SQLInterceptor">
+            <property name="wuzz" value="betterme" />
+        </plugin>
+        <plugin interceptor="com.wuzz.interceptor.MyPageInterceptor">
+        </plugin>
+    </plugins>-->
+
+    
+
+    <mappers>
+        <mapper resource="mapper/*.xml"/>
+    </mappers>
+
+</configuration>
+```
+
+## 获取sqlSessionFactory
+
+```java
+public class MybatisUtils{
+    private static SqlSessionFactory sqlSessionFactory
+    static{
+        try{
+            String resource = "mybatis-config.xml";
+            InputStream is = Resources.getResourceAsStream(resouce);
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(is);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+    
+    public static SqlSession getSqlSession(){
+        return sqlSessionFactory.openSession();
+    }
+}
+
+```
+
+## 获取sqlSession
+
+```java
+SqlSession sqlSession = sqlSession = MybatisUtils.getSqlSession();
+try{
+    // UserDao是与mapper.xml映射的类
+    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+    userMapper.selectAll();
+    // 编辑或者新增需要提交事务
+    sqlSession.commit();
+}finally{
+    sqlSession.rollback();
+    sqlSession.close();
+} 
+```
+
+## 查询
+
+### 模糊查询
+
+**方法一** 
+
+用java代码, 拼接%, 再传给mybatis
+
+**方法二** 
+
+oracle不支持, mysql可以
+
+```sql
+where 字段名 like "%"#{字段名}"%"
+```
+
+**方法三**
+
+```sql
+where 字段名 like CONCAT('%', #{字段名} ,'%')
+```
+
+
+
 # 代码生成器
 
 ## 插件安装
