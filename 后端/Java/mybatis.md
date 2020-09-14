@@ -1,3 +1,494 @@
+# mybatis
+
+## 依赖
+
+```xml
+<dependency>
+	<groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>5.1.46</version>
+</dependency>
+<dependency>
+	<groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.2</version>
+</dependency>
+```
+
+
+
+## 配置文件
+
+```properties
+driver=com.mysql.jdbc.Driver
+url=jdbc:mysql://ip:3306/databaseName?useSSL=true&useUnicode=true&characterEncodingUTF-8
+username=root
+password=123456
+```
+
+在resources下创建mybatis-config.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!-- 读取配置文件 -->
+    <properties resource="db.properties">
+        <!-- 内部定义属性值, 优先级没有外部引入的高 -->
+    	<property name="username" value="root"></property>
+    </properties>
+	<!-- default选择环境, 每次只能使用一个 -->
+    <environments default="development">
+        <!-- 可配置多个environment, 连接不同的数据库 oracle/mysql等 -->
+        <environment id="development">
+            <!-- transactionManager是事务管理器可选择JDBC或者MANAGED, 配置成MANAGED没有事务 -->
+            <!-- 使用spring + mybatis时, 无需配置transactionManager, spring会使用自带的管理器覆盖配置 -->
+            <transactionManager type="JDBC"/>
+            <!-- type可选值 UNPOOLED(无连接池)|POOLED(有连接池)|JNDI(在EJB等容器中使用, 不常用) -->
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+    <settings>
+        <!-- 开启缓存（二级缓存）-->
+        <setting name="cacheEnabled" value="true"/>
+        <!-- 延迟加载的全局开关。当开启时，所有关联对象都会延迟加载。默认 false  -->
+        <setting name="lazyLoadingEnabled" value="true"/>
+        <!-- 开启驼峰命名映射, a_b 映射 aB-->
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <!-- 指定mybatis所用的日志, 未指定时自动查找 -->
+        <setting name="logImpl" value="STDOUT_LOGGING" />
+        <setting name="localCacheScope" value="SESSION"/>
+    </settings>
+    <typeAliases>
+        <!-- 类别名, 可以在xml中的resultType和parameterType直接使用别名-->
+        <typeAlias alias="user" type="com.itianeru.pojo.User" />
+        <!-- 也可以扫描包, 默认的别名是实体类首字母小写的名称 -->
+        <!-- 也可以在实例类上使用 @Alias("别名")指定别名, 在resultType和parameterType中使用基本类型, 需要在前面加下划线, 如 _int, _double, 不加下划线, 是指包装类, 其他的常用集合,只要首字母小写即可如, map, hashMap, arrayList等 -->
+        <package name="com.itiianeru.pojo">
+    </typeAliases>
+    <!-- 映射器 -->
+    <mappers>
+        <mapper resource="mapper/*.xml"/>
+        <!-- 接口映射, 需要xml和接口在同一目录下, 并且名称要相同 UserMapper.class 和UserMapper.xml -->
+        <mapper class="com.itianeru.mapper.UserMapper"/>
+        <package name="com.itianeru.mapper">
+    </mappers>
+</configuration>
+```
+
+## 获取sqlSessionFactory
+
+```java
+public class MybatisUtils{
+    // 程序开始运行就创建, 程序结束才销毁
+    private static SqlSessionFactory sqlSessionFactory
+    static{
+        try{
+            String resource = "mybatis-config.xml";
+            InputStream is = Resources.getResourceAsStream(resouce);
+            // SqlSessionFactoryBuilder()在创建sqlSessionFactory后, 就不再需要
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(is);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+    
+    public static SqlSession getSqlSession(){
+        return sqlSessionFactory.openSession();
+    }
+}
+
+```
+
+## 获取sqlSession
+
+```java
+SqlSession sqlSession = sqlSession = MybatisUtils.getSqlSession();
+try{
+    // UserDao是与mapper.xml映射的类
+    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+    userMapper.selectAll();
+    // 编辑或者新增需要提交事务
+    sqlSession.commit();
+}finally{
+    sqlSession.rollback();
+    sqlSession.close();
+} 
+```
+
+## 结果集映射
+
+```java
+public class User(){
+    private int id;
+    private String username;
+    private Job job;
+}
+
+public class Job(){
+    private int id;
+    private String jobName;
+}
+
+public class User2(){
+    private int id;
+    private String username;
+    private List<Job> list;
+}
+```
+
+
+
+```xml
+<resultMap id="userResultMap" type="User">
+	<result property="id" column="id"  />
+    <result property="username" column="username"  />
+    <!-- 
+		复杂的属性, 单独处理 
+		对象:  association
+		集合:  collection
+	-->
+    <!-- 方式一: 子查询, 延时加载 -->
+    <!-- 方式一: column指的是 result对应的字段, 当做变量传参-->
+    <association property="job"  column="id" javaType="Job" select="getJob"/>
+    <!-- 方式二: 直接映射复杂的数据类型 -->
+    <association property="job"  javaType="Job">
+        <result property="id" column="id"/>
+        <result property="jobName" column="job_name"/>
+    </association>
+    
+    <!-- 方式一:  集合映射 -->
+    <collection property="list" ofType="Job">
+        <result property="id" column="id"/>
+        <result property="jobName" column="job_name"/>
+    </collection>
+    <!-- 方式一:  子查询, 延时加载 -->
+    <collection property="list" javaType="ArrayList" ofType="Job" select="getJob" column="id"/>
+      
+</resultMap>
+
+<select id="getUserList" resultMap="userResultMap">
+	select * from User
+</select>
+
+<select id="getJob" resultType="Job">
+	select * from Job where id = #{id}
+</select>
+```
+
+
+
+## 查询
+
+### 模糊查询
+
+**方法一** 
+
+用java代码, 拼接%, 再传给mybatis
+
+**方法二** 
+
+oracle不支持, mysql可以
+
+```sql
+where 字段名 like "%"#{字段名}"%"
+```
+
+**方法三**
+
+```sql
+where 字段名 like CONCAT('%', #{字段名} ,'%')
+```
+
+### 懒加载
+
+#### 开启
+
+```xml
+<settings>
+    <setting name="lazyLoadingEnabled" value="true"/>
+    <setting name="aggressiveLazyLoading" value="false"></setting>
+</settings>
+```
+
+#### 使用
+
+查看上方结果集映射的xml
+
+```java
+// 此时只会执行, select * from User 这条sql
+List<User> list = userMapper.getUserList();
+for(User user : list){
+    // 当要获取, job的值时, 才会执行 select * from Job where id = #{id} 这个条sql, 去查询对应的job
+    System.out.println(user.getList())
+}
+```
+
+## 日志
+
+在<settings>配置<setting name="logImpl" value="sli4j" />
+
+- STDOUT_LOGGING
+
+  可直接使用
+
+- SLF4J
+
+- LOG4J
+
+  详细内容在log.md笔记中
+
+  - 先导入log4j依赖
+  - 配置文件
+  
+- 等
+
+## 分页
+
+### limit分页
+
+## 动态sql
+
+### where/set
+
+where动态添加and
+
+set动态管理update语句中的逗号
+
+```xml
+<update id="" parameterType="map">
+    update User
+    <set>
+        <if test="id != null ">
+            age = #{age},
+        </if>
+        <if test="username != null ">
+            username = #{username},
+        </if>
+    </set>
+    where id = #{id}
+<update>
+```
+
+### if
+
+```xml
+<select id="" parameterType="map">
+    select * from User
+    <where>
+        <if test="id != null ">
+            id = #{id}
+        </if>
+        <if test="username != null ">
+            and username = #{username}
+        </if>
+    </where>
+<select>
+```
+
+### choose
+
+只选择其中一个 
+
+```xml
+<select id="" parameterType="map">
+    select * from User
+    <where>
+        <choose>
+            <when test="id != null ">
+            	id = #{id}
+            </when>
+            <when test="username != null ">
+                and username = #{username}
+            </when>
+            <otherwise>
+            	and age = #{age}
+            </otherwise>
+        </choose>
+    </where>
+<select>
+```
+
+### trim
+
+自定义前缀添加的语句和动态添加的字符
+
+```xml
+<!-- 前缀添加where, 前坠动态管理and 或 or -->
+<trim prefix="where" prefixOverrides="AND | OR">
+</trim>
+<!-- 前坠添加set, 后缀动态管理, -->
+<trim prefix="set" suffixOverrides=",">
+</trim>
+```
+
+### foreach
+
+```xml
+<select id="" parameterType="map" > 
+	select * from user 
+    <where>
+        <!-- collection中的集合是map传递的 -->
+        <!-- open是前坠, close是后缀, separator是分隔符, item是遍历的值 -->
+        id in
+        <foreach collection="ids" item="id" open=" (" close=")" separator=",">
+			#{id}
+        </foreach>
+    </where>
+</select>
+```
+
+
+
+## sql片段
+
+可重复使用代码, 不要将<where>放到<sql>中
+
+```xml
+<sql id="sqlpd">
+	username, age
+</sql>
+
+<select>
+    select <include refid="sqlpd"></include> from user
+</select>
+```
+
+## 缓存
+
+存在内存中的临时数据, 将用户经常查询的数据, 放到内存中, 提升查询效率.
+
+经常查询, 不经常修改的数据使用缓存
+
+### 一级缓存
+
+默认开启, 在同一个sqlSession下, 同一个查询会读取上一个查询的缓存数据, 不会重复查询数据库.
+
+- 语句中有增删改会刷新缓存
+- 不同的入参会刷新缓存
+- 缓存不会定时刷新
+- 缓存会保存列表或者对象的1024个引用
+- 缓存会使用LRU算法,清除缓存
+
+### 二级缓存
+
+需要手动开启, 基于namespace级别的缓存, 就是说一个命名空间对应一个缓存
+
+##### 缓存策略
+
+LRU(默认)  最近最少使用: 移除最长时间不被使用的对象.
+
+FIFO  先进先出: 按对象进入缓存的顺序来移除它们.
+
+SOFT 软引用: 基于垃圾回收器的状态和软引用规则移除对象.
+
+WEAK 弱引用: 更积极的基于垃圾回收器的状态和软弱用规则移除对象.
+
+### 工作机制
+
+- 一个会话(sqlSession)查询到一条数据, 会放到当前会话一级缓存中
+- 当前会话关闭, 一级缓存中的数据被保存到二级缓存中
+
+### 开启二级缓存
+
+```xml
+<!-- 默认就是开启的 -->
+<settings>
+    <setting name="cacheEnabled" value="true"/>
+</settings>
+```
+
+```xml
+<!-- 在mapper文件中-->
+<mapper namespace="">
+    <!-- 开启当前namespace的二级缓存  eviction缓存策略 flushInterval指定时间刷新缓存 size缓存的数量 readOnly是否只读, 为false时, 需要实体类实现序列化接口, 为true性能更高, 为false时更安全-->
+	<cache eviction="FIFO" flushInterval="60000" size="500" readOnly="true"/>
+    <!-- 也可使用默认设置 -->
+    <cache/>
+    <!-- 可以指定select不使用二级缓存 -->
+    <select id="" userCache="false"></select>
+</mapper>
+```
+
+### 自定义缓存
+
+#### ehcache
+
+##### 依赖
+
+```xml
+<dependency>
+	<groupId>org.mybatis.caches</groupId>
+    <artifactId>mybatis-ehcache</artifactId>
+    <version>1.1.0</version>
+</dependency>
+```
+
+##### 配置
+
+ehcache.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 		
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+          updateCheck="false">
+	<!-- diskStore: 为缓存路径, ehcache分为内存和磁盘两级.此属性定义磁盘的缓存位置。参数解释如下:
+		user.home - 用户主目录
+		user.dir - 用户当前工作目录
+		java.io.tmpdir -默认临时文件路径
+	-->
+	<diskStore path="./tmpdip/Tmp_EhCache"/>
+    <defaultCache
+            eternal="false"
+            maxElementsInMemory="10000"
+            overflowToDisk="false"
+            diskPersistent="false"
+            timeToIdleSeconds="1800"
+            timeToLiveSeconds="259200"
+            memoryStoreEvictionPolicy="LRU" />
+    <cache
+            name="cloud_user"
+            eternal="false"
+            maxElementsInMemory="5000"
+            overflowToDisk="false"
+            diskPersistent="false"
+            timeToIdleSeconds="1800"
+            timeToLiveSeconds="1800"
+            memoryStoreEvictionPolicy="LRU" />
+    <!-- 
+            name:缓存名称。
+            maxELementsInMemory: 缓存最大数目
+            maxELementsOnDisk:硬盘最大缓存个数。
+            eternal: 对象是否永久有效.一但设置了timeout将不起作用。
+            overfiowToDisk: 是否保存到磁盘, 当系统宕机时
+            timeToIdLeSeconds:设置对象在失效前的允许闲置的时间（单位：秒）. 仅当eternaL=false对象不是永久有效时使用, 可选属性.默认值是0, 
+            timeToLiveSeconds:设置对象在失效前的允许存活的时间（单位：秒）. 最大时间介于创建时间和失效时间之间. 仅当eternaL=false对象不是永久有效时使用
+            diskPersistent:是否缓存虚拟机重启期数据 
+            diskSpooLBufferSizeMB:这个参数设置DiskStore (磁啟缓存）的缓存区大小。默认足3QMB。每个Cache都应该有一个自己的缓沖区。 
+            diskExpiryThreadlrrtervaLSeconds:磁盘失效线程运行时间间隔，默认是120秒
+            memoryStoreEvictionPoLicy: 当达到maxELementsInMemory限制时• Ehcache将会根据指定的策略去清理内存.默认策略是LRU(最近最少使用). 
+            cLearOnFLush:内存数量最大时是否清除。
+            memoryStoreEvictionPoLicy: 可选策略有: LRU (最近最少使用丨默认策略）、FIFO (先进先出）、LFU (最少访问次数）。
+	-->
+</ehcache>
+```
+
+
+
+##### 使用
+
+```xml
+<cache type="org.mybatis.caches.ehcache.EhcacheCache">
+```
+
+
+
 # 代码生成器
 
 ## 插件安装
