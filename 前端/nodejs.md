@@ -1,3 +1,22 @@
+# npm
+
+## npm镜像
+
+```
+alias cnpm="npm --registry=https://registry.npm.taobao.org \
+--cache=$HOME/.npm/.cache/cnpm \
+--disturl=https://npm.taobao.org/dist \
+--userconfig=$HOME/.cnpmrc"
+```
+
+## cnpm
+
+```
+npm install -g cnpm --registry=https://registry.npm.taobao.org
+```
+
+
+
 # Express
 
 #### 安装
