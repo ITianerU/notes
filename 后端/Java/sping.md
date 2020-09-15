@@ -442,6 +442,82 @@ public static Proxy{
 
 #### 动态代理
 
+相对于静态代理, 一个动态代理类可代理多个实现了同一个接口的类
+
+##### 基于接口
+
+- jdk动态代理
+
+  接口
+
+  ```java
+  public interface Rent{
+      public void rend();
+  }
+  ```
+
+  实现类
+
+  ```java
+  public class Host implements Rent{
+      public void rend(){ doSomething.... }
+  }
+  ```
+
+  代理类
+
+  ```java
+  public class ProxyInvocationHandler implements invocationHadler {
+      // 被代理的类
+      private Object target;
+      
+      public void setTarget(Object target){
+          this.target = target;
+      }
+   
+      // 获取被代理的类的接口, 生成代理对象
+      public Object getProxy(){
+          return Proxy.newProxyInstance(this.getClass().getClassLoader(), 
+                                        target.getClass().getInterface(), this);
+      }
+      
+      // 处理代理实例
+      public Object invoke(Object proxy, Method method, Object[] args) throws Throwable{
+          seeHouse();
+          Object result = method.invoke(target, args);
+          seeHouse();
+          return  result;
+      }
+      
+      public void seeHouse(){
+          // 看房子
+      }
+  }
+  ```
+
+  调用
+
+  ```java
+  Host host = new Host();
+  // 代理角色
+  ProxyInvocationHandler pih = new ProxyInvocationHandler();
+  // 设置要代理的对象
+  pih.setRent(host);
+  // 动态生成代理类
+  Rent proxy = (Rent)pih.getProxy();
+  proxy.rend();
+  ```
+
+  
+
+##### 基于类
+
+- cjlib
+
+##### java字节码实现
+
+- ##### Javassist
+
 # 常用注解
 
 ## 实例
