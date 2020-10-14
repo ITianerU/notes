@@ -1,18 +1,18 @@
-## 地址
+# 地址
 
-### 官网
+## 官网
 
 https://spring.io/projects/spring-framework#overview
 
-### 源码地址
+## 源码地址
 
 https://repo.spring.io/release/org/springframework/spring/
 
-### github地址
+## github地址
 
 https://github.com/spring-projects/spring-framework
 
-## 组成
+# 组成
 
 spring有七大模块,
 
@@ -38,7 +38,7 @@ spring有七大模块,
 
 **Spring Web MVC**
 
-## 依赖
+# 依赖
 
 ```xml
 <!-- https://mvnrepository.com/artifact/org.springframework/spring-webmvc -->
@@ -50,7 +50,7 @@ spring有七大模块,
 </dependency>
 ```
 
-## 配置文件
+# 配置文件
 
 applicationContext.xml
 
@@ -144,7 +144,7 @@ applicationContext.xml
 </beans>
 ```
 
-### 加载配置文件
+## 加载配置文件
 
 ```java
 // 构造可传递多个参数, 读取多个配置文件
@@ -152,17 +152,19 @@ applicationContext.xml
 ApplicationContext context = new ClassPathXmlApplication("applicationContext.xml");
 ```
 
-## 核心
+# 核心
 
-### IOC
+## IOC
 
 降低耦合度, 将创建对象交给spring, 减少硬编码.
 
 在项目启动时, 就会创建实例, 默认是单例模式.
 
-#### 实现
+**推荐**  xml管理bean, 注解实现注入.
 
-##### xml方式
+### xml方式
+
+#### 实现
 
 applicationContext.xml
 
@@ -206,10 +208,10 @@ applicationContext.xml
 </beans>
 ```
 
-##### 获取对象
+#### 获取对象
 
 ```java
-ApplicationContext context = new ClassPathXmlApplication("applicationContext.xml");
+ApplicationContext context = new ClassPathXmlApplicationContext("applicationContext.xml");
 // 从spring容器中, 通过id获取类对象
 User user = (User)context.getBean("user");
 // 也可以通过别名, 获取对象实例
@@ -338,8 +340,6 @@ autowired
 - **byName**  通过属性名与bean的id名做匹配, 首字母小写
 - **byType**  通过类型做匹配, 需保证要装备的类型全局唯一
 
-##### xml方式
-
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans" 		 
@@ -352,3 +352,214 @@ autowired
 </beans>
 ```
 
+### 注解方式
+
+在spring4之后, 要使用注解开发, 必须要保证aop包的导入.
+
+使用注解, 需要导入context约束, 增加注解的支持
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" 
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd">
+    
+    <!-- 指定扫描的包, 这个包下的注解会生效 -->
+    <context:component-scan base-package="com.itianeru.*" />
+    <!-- 要使用@ Resource 、@ PostConstruct、@ PreDestroy、@PersistenceContext、@Autowired、@Required 等注解, 需要声明 -->
+    <context:annotation-config />
+</beans>
+```
+
+```java
+@Component
+@Scope("singleton")
+public class User(){
+    @Value("老王")
+    private String username;
+}
+```
+
+### java方式(推荐)
+
+```java
+@Configuration
+@ComponentScan("com.itianeru.*")
+// 引入别的配置类
+@Import(Config2.class)
+public class Config{
+    
+    @Bean
+    public UserService getUserService(){
+        return new UserService();
+    }
+}
+```
+
+```java
+@Component
+public class UserService{}
+```
+
+#### 获取对象
+
+```java
+ApplicationContext context = new AnnotationConfigApplicationContext(Config.class);
+// 从spring容器中, 通过配置类的方法名获取对象
+UserService user = (User)context.getBean("getUserService");
+```
+
+## AOP
+
+### 代理模式
+
+#### 静态代理
+
+```java
+// 代理类
+public static Proxy{
+    // 被代理的对象
+    private UserService userService;
+    public Proxy(UserService userService){
+        this.userService = userService;
+    }
+    
+    public void doSomeThing(){
+        // 代理类操作一些公共业务逻辑
+        System.out.println("做了一些事");
+        // 执行被代理对象的方法.
+        this.userService.selectOne();
+        System.out.println("做了一些事");
+    }
+}
+```
+
+
+
+#### 动态代理
+
+相对于静态代理, 一个动态代理类可代理多个实现了同一个接口的类
+
+##### 基于接口
+
+- jdk动态代理
+
+  接口
+
+  ```java
+  public interface Rent{
+      public void rend();
+  }
+  ```
+
+  实现类
+
+  ```java
+  public class Host implements Rent{
+      public void rend(){ doSomething.... }
+  }
+  ```
+
+  代理类
+
+  ```java
+  public class ProxyInvocationHandler implements invocationHadler {
+      // 被代理的类
+      private Object target;
+      
+      public void setTarget(Object target){
+          this.target = target;
+      }
+   
+      // 获取被代理的类的接口, 生成代理对象
+      public Object getProxy(){
+          return Proxy.newProxyInstance(this.getClass().getClassLoader(), 
+                                        target.getClass().getInterface(), this);
+      }
+      
+      // 处理代理实例
+      public Object invoke(Object proxy, Method method, Object[] args) throws Throwable{
+          seeHouse();
+          Object result = method.invoke(target, args);
+          seeHouse();
+          return  result;
+      }
+      
+      public void seeHouse(){
+          // 看房子
+      }
+  }
+  ```
+
+  调用
+
+  ```java
+  Host host = new Host();
+  // 代理角色
+  ProxyInvocationHandler pih = new ProxyInvocationHandler();
+  // 设置要代理的对象
+  pih.setRent(host);
+  // 动态生成代理类
+  Rent proxy = (Rent)pih.getProxy();
+  proxy.rend();
+  ```
+
+  
+
+##### 基于类
+
+- cjlib
+
+##### java字节码实现
+
+- ##### Javassist
+
+# 常用注解
+
+## 实例
+
+**@Component, @Controller, @Service, @Repository**  功能完全相同, 只为了做控制层, 业务层, 持久层区分.
+
+**@RestController**  返回json数据.
+
+## 自动装配
+
+**@Autowired**: 自动装配, 通过类型和名字, 如果通过类型装配找到多个实例, 则需要**@Qualifier(value="xxx")**
+
+- **required=false**  非必须注入实例
+
+```java
+@Service("userService1")
+public class UserServiceImpl1(){}
+
+@Service("userService2")
+public class UserServiceImpl2(){}
+
+@Autowired
+// 有两个UserService类型的实例, 指定要注入哪一个
+@Qualifier("userService1")
+UserService userService;
+```
+
+**@Resource**: 自动装配通过名称, 类型, 默认名称
+
+- **name="xxx"**   通过名称装配
+- **type="xxx"**   通过类型装配
+
+## 其他
+
+**@Value**   赋值, 用在属性或者set方法上
+
+**@Scope**   设置作用域, 单例, 原型等
+
+**@Configuration**   声明的类的配置类
+
+**@Import**  引入别的配置类
+
+**@ComponentScan**   包扫描
+
+**@Bean**   创建bean
