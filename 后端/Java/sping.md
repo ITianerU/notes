@@ -438,8 +438,6 @@ public static Proxy{
 }
 ```
 
-
-
 #### 动态代理
 
 相对于静态代理, 一个动态代理类可代理多个实现了同一个接口的类
@@ -518,6 +516,388 @@ public static Proxy{
 
 - ##### Javassist
 
+### 依赖
+
+aop需要依赖aspectj
+
+```xml
+<dependency>
+    <groupId>org.aspectj</groupId>
+    <artifactId>aspectjweaver</artifactId>
+    <version>1.9.4</version>
+</dependency>
+```
+
+### 执行顺序
+
+- before
+- around-before
+- after
+- around-after
+- afterReturing
+
+### 使用
+
+#### 名词
+
+##### 横切关注点
+
+与业务无关的并且需要关注的功能, 日志, 安全, 缓存, 事务等
+
+##### 切面
+
+```java
+pubic class BeforeLog implements MethodBeforeAdvice{
+    // 前置通知 method要执行的方法, args参数, target 目标对象
+    public void before(Method method, Object[] args, Obejct target) throws Throwable{
+        System.out.println("before............")
+    }
+}
+
+pubic class AfterLog implements BeforeReturningAdvice{
+    // 后置通知 returnValue 方法的返回值 method要执行的方法, args参数, target 目标对象
+    public void afterReturning(Object returnValue, Method method, Object[] args, Obejct target) throws Throwable{
+        System.out.println("afterReturning............")
+    }
+}
+```
+
+##### 目标
+
+```java
+public class UserServiceImpl implements UserService{
+    // 切入点, 连接点
+    public void selectList(){
+    	do something....
+    }
+}
+```
+
+#### 配置
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/beans/spring-aop.xsd">
+	<bean id="userService" calss="com.itianeru.service.UserServiceImpl" />
+    <bean id="beforeLog" calss="com.itianeru.log.BeforeLog" />
+    <bean id="afterLog" calss="com.itianeru.log.AfterLog" />
+    
+    <!-- 配置: 需要导入aop约束 -->
+    <aop:config>
+        <!-- 配置切入点 expression表达式(要执行的位置) -->
+        <aop:pointcut id="pointcut" expression="execution(* com.itianeru.service.*.*(..))" />
+        <!-- 配置通知 -->
+        <aop:advisor advice-ref="beforeLog" pointcut-ref="pointcut" />
+        <aop:advisor advice-ref="afterLog" pointcut-ref="pointcut" />
+    </aop:config>
+</beans>
+```
+
+### 自定义使用
+
+无需实现MethodBeforeAdvice等通知接口
+
+```java
+public class DiyPointCut{
+    public void before(){
+        System.out.println("===== 前置 ======");
+    }
+    
+    public void after(){
+        System.out.println("===== 后置 ======");
+    }
+}
+```
+
+#### 配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/beans/spring-aop.xsd">
+	<bean id="userService" calss="com.itianeru.service.UserServiceImpl" />
+    
+    <!-- 自定义通知类 -->
+    <bean id="diy" class="com.itianeru.log.DiyPointCut" />
+    <!-- 配置: 需要导入aop约束 -->
+    <aop:config>
+        <!-- 自定义切面 -->
+        <aop:aspect ref="diy">
+            <!-- 切入点 -->
+        	<aop:pointcut id="pointcut" expression="execution(* com.itianeru.service.*.*(..))" />
+            <!-- 配置通知 -->
+            <aop:before method="before" pointcut-ref="point" />
+            <aop:after method="after" pointcut-ref="point" />
+        </aop:aspect>
+    </aop:config>
+    
+</beans>
+```
+
+### 注解实现
+
+```java
+// 声明切面
+@Aspect
+public class AnnotationPointCut{
+    @Before("execution(* com.itianeru.service.*.*(..))")
+    public void before(){
+        System.out.println("===== 前置 ======");
+    }
+    
+    @After("execution(* com.itianeru.service.*.*(..))")
+    public void after(){
+        System.out.println("===== 后置 ======");
+    }
+    
+    @Around("execution(* com.itianeru.service.*.*(..))")
+    public void around(ProceedingJoinPoint jp){
+        System.out.println("===== 环绕前 ======");
+        // 执行被代理的方法
+        Object proceed = jp.proceed();
+        System.out.println("===== 环绕后 ======");
+    }
+}
+```
+
+#### 配置
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/beans/spring-aop.xsd">
+	<bean id="userService" calss="com.itianeru.service.UserServiceImpl" />
+    
+    <!-- 自定义通知类 -->
+    <bean id="annoPointCut" class="com.itianeru.log.AnnotationPointCut" />
+    <!-- 开启注解支持, 自动代理 -->
+    <!-- 
+ 		两种动态代理模式, jdk(默认) 和cglib
+		proxy-target-class = false 为jdk动态代理  =true为cglib
+	-->
+    <aop:aspectj-atuoproxy proxy-target-class="false" />    
+</beans>
+```
+
+# 整合mybatis
+
+## 依赖
+
+```xml
+<!-- spring -->
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>5.2.8.RELEASE</version>
+</dependency>
+<!-- spring 操作数据库的包 -->
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-jdbc</artifactId>
+    <version>5.2.8.RELEASE</version>
+</dependency>
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>5.1.47</version>
+</dependency>
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.2</version>
+</dependency>
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis-spring</artifactId>
+    <version>2.0.2</version>
+</dependency>
+<!-- aop -->
+<dependency>
+    <groupId>org.aspectj</groupId>
+    <artifactId>aspectjweaver</artifactId>
+    <version>1.8.13</version>
+</dependency>
+```
+
+## 方式一
+
+### 配置
+
+### mybatis配置
+
+mybatis-config.xml  详情在mybatis笔记中
+
+### spring-mybatis配置
+
+spring-mybatis.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+    <!-- dataSource 数据源, 使用jdbc 可选c3p0 dbcp druid -->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+    	<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+        <property name="url" value="" />
+        <property name="username" value="" />
+        <property name="password" value="" />
+    </bean>
+    
+   	<!-- sqlSessionFactory -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+    	<property name="dataSource" ref="dataSource" />
+        <!-- 绑定mybatis -->
+        <property name="configLocation" value="claaspath:mybatis-config.xml" />
+    </bean>
+    
+    <!-- 创建sqlSession会话 -->
+    <bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+        <constructor-arg index="0" ref="sqlSessionFactory" />
+    </bean>
+    
+    <!-- 注入sqlSessionTemplate -->
+    <bean id="userService" class="com.itianeru.service.UserServiceImpl">
+        <property name="sqlSession" ref="sqlSession" />
+    </bean>
+    
+</beans>
+```
+
+### Spring配置
+
+applicationContext.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <import resource="spring-mybatis.xml" />
+</beans>
+```
+
+### 使用
+
+```java
+public class UserServiceImpl{
+    @Autowired
+    private SqlSessionTemplate sqlSession;
+    
+    public void setSqlSession(SqlSessionTemplate sqlSession){
+        this.sqlSession = sqlSession;
+    }
+    
+    public List<User> selectList(){
+        UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+        return mapper.selectUserList();
+    }
+}
+```
+
+## 方式二
+
+使用SqlSessionDaoSupport
+
+### mybatis配置
+
+与方式一相同
+
+### spring-mybatis配置
+
+spring-mybatis.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+    <!-- 其他配置和方式一相同, 不需要配置sqlSessionTemplate -->
+    
+   	<!-- 注入sqlSessionFactory -->
+    <bean id="userService" class="com.itianeru.service.UserServiceImpl">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    
+</beans>
+```
+
+### 使用
+
+```java
+public class UserServiceImpl extends SqlSessionDaoSupport{
+    public List<User> selectList(){
+        // 可直接使用getSqlSession();
+        return getSqlSession().getMapper(UserMapper.class).selectuserList();
+    }
+}
+```
+
+# 事务
+
+##  配置
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xmlns:tx="http://www.springframework.org/schema/tx" 
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/beans/spring-aop.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/beans/spring-tx.xsd">
+	
+    <!-- 配置声明式事务 -->
+    <bean id="transactionManager" 
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <constructor-arg ref="dataSource" />
+        <!-- 或 -->
+        <property name="dataSource" ref="sqlSessionFactory" />
+    </bean>
+    
+    <tx:advice id="txAdvice" transation=manager="transactionManager">
+        <tx:attribute>
+            <!-- name: 想要添加事务的方法名 propagation; 事务传播特性, 默认REQUIRED; 
+								read-only 设置只读 -->
+            <tx:method name="select" read-only="true"/>
+            <tx:method name="add" propagation="REQUIRED"/>
+            <tx:method name="delete"/>
+            <tx:method name="*"/>
+        </tx:attribute>
+    </tx:advice>
+    
+    <!-- 配置事务切入点 -->
+    <aop:config>
+    	<aop:pointcut id="txPointCut" expression="execution(* com.itianeru.mapper.*.*(..))" />
+        <aop:advisor advice-ref="txadvice" pointcut-ref="txPointCut">
+    </aop:config>
+</beans>
+```
+
 # 常用注解
 
 ## 实例
@@ -549,6 +929,14 @@ UserService userService;
 
 - **name="xxx"**   通过名称装配
 - **type="xxx"**   通过类型装配
+
+## AOP
+
+**@Aspect:**   声明切面
+
+**@Before("execution(* com.itianeru.service.*.*(..))"): **  前置通知
+
+**@After("execution(* com.itianeru.service.*.*(..))"):**   后置通知
 
 ## 其他
 
