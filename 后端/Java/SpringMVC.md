@@ -97,3 +97,61 @@
 - **控制器**返回数据, 以及对应的页面信息给**前端控制器**
 - **前端控制器**调用**视图解析器(ViewResolver)**解析出视图,
 - **前端控制器**将解析出的视图返回给浏览器 
+
+# 开发
+
+## RestFul风格
+
+@PathVariable注解
+
+```java
+@GetMapping("/test/{a}/{b}")
+// 或者@RequestMapping(value="/test/{a}/{b}", method=RequestMethod.GET)
+public String test(@PathVariable int a,@PathVariable int b){
+    // 巴拉巴拉
+}
+```
+
+调用
+
+http://localhost:8080/test/1/2
+
+## 重定向与请求转发
+
+```java
+@GetMapping("/test")
+public String test(){
+    // 转发
+    return "test";
+    // 重定向
+    return "redirect:test";
+    return "redirect:/index.jsp";
+}
+```
+
+## 乱码问题
+
+web.xml配置过滤器
+
+```xml
+<filter>
+	<filtername>encoding</filter-name>
+    <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+    <init-param>
+    	<param-name>encoding</param-name>
+        <param-value>utf-8</param-value>
+    </init-param>
+</filter>
+<filter-mapping>
+	<filtername>encoding</filter-name>
+    <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
+
+tomcat设置编码
+
+```xml
+<Connector URIEncoding="utf-8" port="8080" protocol="HTTP/1.1" connectionTimeout="20000" 
+           redirectPort="8443"/>
+```
+
