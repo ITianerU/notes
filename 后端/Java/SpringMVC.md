@@ -74,7 +74,7 @@
     <!-- <mvc:default-servlet-handler /> -->
     <!-- 自动注册处理器映射器DafultAnnotationHadlerMapping 和处理器适配器 AnnotationMethodHandlerAdapter -->
     <!-- 不注册不能使用@RequestMapping-->
-    <mvc:annotation-driver />
+    <mvc:annotation-driven />
     <!-- 视图解析器 -->
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver" 			
           id="InternalResourceViewResolver">
@@ -131,7 +131,7 @@ public String test(){
 
 ## 乱码问题
 
-web.xml配置过滤器
+### web.xml配置过滤器
 
 ```xml
 <filter>
@@ -148,10 +148,33 @@ web.xml配置过滤器
 </filter-mapping>
 ```
 
-tomcat设置编码
+### tomcat设置编码
 
 ```xml
 <Connector URIEncoding="utf-8" port="8080" protocol="HTTP/1.1" connectionTimeout="20000" 
            redirectPort="8443"/>
+```
+
+### 解决返回json乱码
+
+在spring-mvc.xml中添加
+
+```xml
+<!-- 使用Jackson时, 这么解决 -->
+<mvc:annotation-driven>
+	<mvc:message-converters register-defaults="true">
+    	<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+        	<constructorarg value="utf-8" />
+        </bean>
+        <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
+        	<property name="objectMapper">
+            	<bean 
+                    class="org.springframework.http.converter.json.Jackson2ObjectMapperFactoryBean">
+                    <property name="failOnEmptyBeans" value="false"></property>
+                </bean>
+            </property>
+        </bean>
+    </mvc:message-converters>
+</mvc:annotation-driven>
 ```
 

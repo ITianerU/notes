@@ -854,6 +854,43 @@ public class UserServiceImpl extends SqlSessionDaoSupport{
 }
 ```
 
+## 方式三(推荐)
+
+配置mapper接口包扫描
+
+spring-mybatis.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 		 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    	http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+    <!-- dataSource 数据源, 使用jdbc 可选c3p0 dbcp druid -->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+    	<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+        <property name="url" value="" />
+        <property name="username" value="" />
+        <property name="password" value="" />
+    </bean>
+    
+   	<!-- sqlSessionFactory -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+    	<property name="dataSource" ref="dataSource" />
+        <!-- 绑定mybatis -->
+        <property name="configLocation" value="claaspath:mybatis-config.xml" />
+    </bean>
+    
+   	<!-- 开启mapper接口扫描 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer" >
+    	<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" />
+        <property name="basePackage" value="com.itianeru.mapper" />
+    </bean>
+    
+</beans>
+```
+
 # 事务
 
 ##  配置
