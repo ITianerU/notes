@@ -178,3 +178,37 @@ public String test(){
 </mvc:annotation-driven>
 ```
 
+## 拦截器
+
+```java
+public class MyInterceptor implements HandlerInterceptor{
+    // 处理前
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, 
+                             Object handler) throws Exception{
+        return true;
+    }
+    // 处理后
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
+                           ModelAndView modelAndView) throws Exception{
+        
+    }
+    // 清理
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, 
+                                Object handler,Exception ex) throws Exception{
+        
+    }
+}
+```
+
+#### 配置
+
+```xml
+<mvc:interceptors>
+    <mvc:interceptor>
+        <!-- 配置被拦截的请求 -->
+    	<mvc:mapping path="/**"></mvc:mapping>
+        <bean class="com.itianeru.interceptor.MyInterceptor">
+    </mvc:interceptor>
+</mvc:interceptors>
+```
+
