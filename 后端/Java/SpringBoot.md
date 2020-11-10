@@ -1,6 +1,6 @@
 # SpringBoot
 
-### 配置
+## 配置
 
 ```yml
 server:
@@ -10,20 +10,237 @@ spring:
     name: xxx # 项目名
 ```
 
-#### maven
+### yaml语法(推荐使用, 支持的语法多)
+
+```yml
+# 行内写法
+persion: {name: laowang, age: 13}
+# 数组
+students:
+	- laowang
+	- xiaohong
+# 数组行内写法
+students: [stu1, stu2]
+```
+
+#### yaml注入数据
+
+实体类
+
+```java
+@Component
+/* 
+     通过该注解, 指定yaml中配置的数据前缀后, 自动注入到实体类的属性中
+     使用该注解, idea会报红, 不影响开发, 可以添加如下依赖解决
+     <dependency>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-configuration-processor</artifactId>
+		<optional>true</optronal>
+     </dependency>
+     实体类需要有参构造
+*/ 
+@ConfigurationProperties(prefix = "person")
+public class Person{
+    private String name;
+    private Date birth;
+    private Map<String, Object> maps;
+    private List<Object> lists;
+    private Dog dog;
+}
+```
+
+yaml
+
+```yaml
+person:
+	name: 老王${random.int}    #   随机数 ${random.uuid} 
+	birth: 1998/12/12
+	maps: {k1: v1, k2: v2}
+	lists:
+		- img
+		- music
+	dog:
+		name: ${person.name:花花}    # 三元表达式, 如果存在persion.name则使用, 不存在则使用冒号后面的值
+		age: 3
+```
+
+### properties语法
+
+#### properties注入数据
+
+实体类
+
+```java
+@Component
+/* 
+     通过该注解, 可以指定自定义的properties文件中的数据, 手动通过@Balue注入到实体类的属性中
+     实体类需要有参构造
+*/ 
+@PropertySource(value = "classpath:person.properties")
+public class Person{
+    @Value("${name}")
+    private String name;
+}
+```
+
+properties
+
+```properties
+name=老王
+```
+
+### 配置文件位置
+
+按优先级从高到低排序
+
+- 根目录下的config目录下
+
+  ```yml
+  demo:  # 项目名
+  	config:  # 放在这里
+  		application.yml  # 配置文件
+  	src:   # 代码
+  	pom.xml
+  ```
+
+- 根目录下
+
+  ```yml
+  demo:  # 项目名
+  	application.yml  # 配置文件
+  	src:   # 代码
+  	pom.xml
+  ```
+
+- 代码目录下/src/main/resources/config
+
+  ```yml
+  demo:  # 项目名
+  	src:   # 代码
+  		main:
+  			java:
+  			resources:
+  				config:
+  					application.yml  # 配置文件
+  	pom.xml
+  ```
+
+- 代码目录下/src/main/resources/
+
+  ```yml
+  demo:  # 项目名
+  	src:   # 代码
+  		main:
+  			java:
+  			resources:
+  				application.yml  # 配置文件
+  	pom.xml
+  ```
+
+### 多环境配置文件切换
+
+#### 写多个配置文件
+
+- application-test.yml   测试环境
+- application-dev.yml   研发环境
+- application-prod.yml   生产环境
+
+切换配置文件
+
+application.yml
+
+```yml
+spring:
+	profiles:
+		active: test
+```
+
+#### 一个配置文件
+
+通过三个横杠 --- 来划分不同环境的配置
+
+application.yml
+
+```yml
+spring:
+	profiles:
+		active: test   # 指定使用哪个配置
+---
+server:
+	port: 8081
+spring:            
+	profiles: test      # 设置配置名称
+---
+server:
+	port: 8082
+spring:            
+	profiles: dev      # 设置配置名称
 
 ```
-idea默认的maven的settings.xml的目录在idea的安装目录下
-idea/plugins/maven/lib/maven3/conf/settings.xml
+
+## 原理
+
+### 自动配置
+
+#### 注解
+
+- @SpringBootApplication   声明这个类是springboot应用的启动类
+  - @SpringBootConfiguration   springboot配置
+    - @Configuration    声明spring配置类
+      - @Component    说明这是个组件
+  - @EnableAutoConfiguration    自动配置
+    - @AutoConfigurationPackage    自动配置包
+      - @Import(AutoConfigurationPackages.Register.class)   自动配置包注册
+    - @import(AutoConfigurationImportSelector.class)   导入自动选择类
+      - getAutoConfigurationEntry()    获得自动配置的实体
+        - getCandidateConfigurations()   获取候选的配置
+  - @ComponentScan    扫描当前主启动类同级的包
+
+#### 原理分析
+
+springboot所有自动配置都是在启动的时候扫描并加载, 但是不一定生效, 会判断条件是否成立, 只有导入的对应的start, 就有了对应的启动器才能生效
+
+- springboot在启动的时候, 从类路径下/META-INF/spring.factories(在spring-boot-autoconfigure包下) 获取指定的类值
+- 将这些类导入到容器, 自动配置就会生效
+
+## 使用
+
+### JSR303校验
+
+```java
+@Component
+// 使用该注解进行数据校验,  
+@Validated
+public class Person{
+    // 在message中指定校验的提示
+    // 空值校验
+    @Null(message="不能为空")  // 该属性必须为空
+    @NotNull  // 非空
+   	// 布尔类型校验
+    @AssertTrue  // 必须为true
+    @AssertFalse // 必须为false
+    // 数字校验
+    @Min(10)   // 大于等于10
+    @DecimalMin(10)  // 大于等于10
+    @Max(10)   // 小于等于10
+    @DecimalMax(10)  // 小于等于10
+    @Size(10, 20)   // 数字范围在10-20之间
+    // 日期校验
+    @Past   // 必须为过去的日期
+    @Future  // 必须为将来的日期
+    // 字符串校验
+    @Email(message="邮箱格式错误")     // 校验邮箱格式
+    @Length(10,20)   // 限制字符串长度
+    @NotEmpty // 非空字符串
+    @Range  // 长度在指定范围内
+    @Pattern()    // 正则
+    private String email;
+}
 ```
 
-```
-#### 往maven添加jar包
-
-- mvn install:install-file -DgroupId=energycontrol -DartifactId=energycontrol-jdk -Dversion=1.0 -Dpackaging=jar -Dfile=D:\work\¹¤×÷ÎÄ¼þ\energycontrol-jdk-1.0.jar
-```
 
 
+## 集成
 
 ### Banner
 
