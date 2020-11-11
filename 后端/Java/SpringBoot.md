@@ -3,6 +3,7 @@
 ## 配置
 
 ```yml
+debug: true  # 开启配置类日志输出
 server:
   port: 8001  # 端口
 spring:
@@ -236,6 +237,79 @@ public class Person{
     @Pattern()    // 正则
     private String email;
 }
+```
+
+### 静态资源
+
+#### 访问路径配置
+
+##### 默认配置
+
+静态资源html, js等可放置在如下目录下, 按访问优先级从高到低排序
+
+访问地址:    http://localhost:8080/静态资源
+
+```yml
+demo:  # 项目名
+	src:   # 代码
+		main:
+			resources:
+				resources:   # 优先级最高
+					静态资源
+				static:      # 优先级其次
+				public:      # 优先级第三
+				templates:   # 只能通过controller跳转访问, 需要导入thymeleaf依赖
+```
+
+##### 自定义配置(不推荐)
+
+静态资源的访问路径会变成如下的路径
+
+```properties
+spring.mvc.static-path-pattern=/itianeru/**
+```
+
+#### 页面配置
+
+**首页**
+
+在静态资源访问目录添加  index.html
+
+**页面图标**
+
+在静态资源访问目录添加favicon.ico的图标 , **部分springboot版本不支持**
+
+关闭默认图标
+
+```properties
+spring.mvc.favicon.enabled=false
+```
+
+#### 模板引擎
+
+##### 依赖
+
+```xml
+<dependency>
+	<groupId>org.thymeleaf</groupId>
+    <artifactId>thymeleaf-spring5</artifactId>
+</dependency>
+<dependency>
+	<groupId>org.thymeleaf.extras</groupId>
+    <artifactId>thymeleaf-extras-java8time</artifactId>
+</dependency>
+```
+
+##### 使用
+
+文件放置在templates下, 需要通过controller跳转
+
+```html
+<!-- 导入thymeleaf约束 -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <!-- 输出后端返回的数据 -->
+    ${msg}
+</html>
 ```
 
 
