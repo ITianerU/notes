@@ -179,6 +179,53 @@ spring:
 
 ```
 
+### spingmvc配置
+
+#### 基本配置
+
+```properties
+# 配置日期格式
+spring.mvc.date-format="yyyy-MM-dd"
+```
+
+
+
+#### Java配置
+
+```java
+package com.itianeru.config
+
+// 如果想定制化一些功能, 只需要写这个组件, 然后@Bean交给springboot, spirngboot会自动装配
+@Configuration
+public class MyMvcConfig implements WebMvcConfigurer{
+    
+    @Bean
+    public ViewResolver myViewResolver(){
+        return new MyViewResolver();
+    }
+    
+    // 手动添加页面请求跳转映射
+   	// 可设置不同的请求路径, 跳转相同的页面
+    @Override
+    public void addViewControllers(ViewCOntrollerRegistry registry){
+		registry.addViewController("/test").setViewName("test");
+         registry.addViewController("/test2").setViewName("test");
+    }
+}
+```
+
+```java
+// 自定义视图解析器
+public class MyViewResolver implements ViewResolver{
+    @Override
+    public View resolveViewName(String viewName, Locale locale) throws Exception {
+        return null;
+    }
+}
+```
+
+
+
 ## 原理
 
 ### 自动配置
@@ -308,7 +355,11 @@ spring.mvc.favicon.enabled=false
 <!-- 导入thymeleaf约束 -->
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
     <!-- 输出后端返回的数据 -->
-    ${msg}
+    <span th:text="${msg}"></span>
+    <!-- 带标签语义输出后端返回的数据, 例如  msg="<h1>hello</h1>" -->
+    <div th:utext="${msg}"></div>
+	<!-- 遍历,  users为集合, user为集合的每一项 -->
+    <span th:each="user:${users}" th:test="${user}"></span>
 </html>
 ```
 
