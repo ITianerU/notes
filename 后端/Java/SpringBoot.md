@@ -6,6 +6,7 @@
 debug: true  # 开启配置类日志输出
 server:
   port: 8001  # 端口
+  servlet.cpmtext=path: /itianeru  # 项目访问路径 http://localhost:8080/itianeru
 spring:
   application:
     name: xxx # 项目名
@@ -206,6 +207,7 @@ public class MyMvcConfig implements WebMvcConfigurer{
     
     // 手动添加页面请求跳转映射
    	// 可设置不同的请求路径, 跳转相同的页面
+    // 等价于@RequestMapping({"/test", "/test2"})
     @Override
     public void addViewControllers(ViewCOntrollerRegistry registry){
 		registry.addViewController("/test").setViewName("test");
@@ -347,6 +349,13 @@ spring.mvc.favicon.enabled=false
 </dependency>
 ```
 
+##### 配合
+
+```properties
+# 关闭缓存
+spring.thymeleaf.cahce=false
+```
+
 ##### 使用
 
 文件放置在templates下, 需要通过controller跳转
@@ -354,13 +363,93 @@ spring.mvc.favicon.enabled=false
 ```html
 <!-- 导入thymeleaf约束 -->
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <!--导入css -->
+        <link th:href="@{css路径}" rel="stylesheet"/>
+    </head>
     <!-- 输出后端返回的数据 -->
     <span th:text="${msg}"></span>
+    <!-- 或者 -->
+    <span>[[${msg}]]</span>
     <!-- 带标签语义输出后端返回的数据, 例如  msg="<h1>hello</h1>" -->
     <div th:utext="${msg}"></div>
 	<!-- 遍历,  users为集合, user为集合的每一项 -->
-    <span th:each="user:${users}" th:test="${user}"></span>
+    <span th:each="user:${users}" th:text="${user}"></span>
+    <!-- if msg不等于空, 才显示-->
+    <span th:text="${msg}" th:if="${not #strings.isEmpty(msg)}"></span>
+    <!-- 图片 -->
+    <img th:src="@{图片路径}" />
 </html>
+```
+
+##### 国际化 
+
+在/resources/下创建文件夹 i18n
+
+创建一个配置文件 xxx.properties 和 xxx_zh_CN.properties,  idea会自动合并这两个文件, 并创建一个Resource Bundle文件夹, 右键该文件夹可添加跟多的配置文件
+
+**国家_地区**
+
+- zh_CN  中文
+- en_US  英文
+
+点开xxx.properties, 窗口下方有一个Resource Bundle选项, 点开可同时配置多个不同语言配置文件的值
+
+###### 配置
+
+```properties
+# xxx为编写的配置文件的名称
+spring.messages.basename=i18n.xxx    
+```
+
+```java
+package com.itianeru.config
+
+// 国际化解析器
+@Configuration
+public class MyLocaleResolver implements LocaleResolver{
+    @Override
+    public Locale resovleLocale(HttpServletRequest request) {
+        // 获取页面传递的国际化参数
+        Styring language = request.getParameter("language");
+        // 获取默认的设置
+        Locale locale = Locale.getDefault();
+        // 如果请求的国际化参数为空, 则使用默认的配置
+        if(!StringUtils.isEmpty(language)){
+            // 将参数分割为国家和地区
+            String[] split = language.split("_");
+            locale = new Locale(split[0], split[1]);
+        }
+        return locale;
+    }
+}
+```
+
+```java
+@Configuration
+public class MyMvcConfig implements WebMvcConfigurer{
+    
+    // 将国际化解析器注册为bean
+    @Bean
+    public LocaleResolver localeResolver(){
+        return new MyLocaleResolver();
+    }
+}
+```
+
+###### 使用
+
+```html
+<!-- 使用#{}会读取国际化配置文件 -->
+<span th:text="#{国际化配置文件配置的字段名}"></span>
+<!-- 或者 -->
+<span>[[#{msg}]]</span>
+```
+
+```html
+<!-- 切换中英文 -->
+<a th:href="@{当前页面路径(language='zh_CN')}">中文</a>
+<a th:href="@{当前页面路径(language='en_US')}">English</a>
 ```
 
 
