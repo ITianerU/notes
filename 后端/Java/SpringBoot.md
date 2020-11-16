@@ -379,6 +379,16 @@ spring.thymeleaf.cahce=false
     <span th:text="${msg}" th:if="${not #strings.isEmpty(msg)}"></span>
     <!-- 图片 -->
     <img th:src="@{图片路径}" />
+    <!-- 声明一个组件, 可以在其他地方插入 -->
+    <!-- 用于多个页面公用相同的部分 -->
+    <div th:fragment="组件名">
+        <!-- 接收该组件在使用时传递的参数 -->
+    	<span th:calss="${参数名}"></span>
+    </div>
+    <!-- 插入组件, 需要指明是哪个文件中的哪个组件, 可传递参数 -->
+    <div th:insert="~{文件名::组件名(参数名='参数值')}"></div>
+    <!-- 替换组件 -->
+    <div th:replace="~{文件名::组件名}"></div>
 </html>
 ```
 
@@ -450,6 +460,35 @@ public class MyMvcConfig implements WebMvcConfigurer{
 <!-- 切换中英文 -->
 <a th:href="@{当前页面路径(language='zh_CN')}">中文</a>
 <a th:href="@{当前页面路径(language='en_US')}">English</a>
+```
+
+### 拦截器
+
+```java
+public class MyInterceptor implements HandlerInterceptor{
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception{
+        
+    }
+}
+```
+
+**注册拦截器**
+
+```java
+@Configuration
+public class MyMvcConfig implements WebMvcConfigurer{
+    
+    @Bean
+    public void addInterceptors(InterceptorRegistry registry){
+        // 配置拦截器
+        registry.addInterceptor(new MyInterceptor())
+            // 配置哪些请求被拦截
+            .addPathPatterns("/**")
+            // 排除哪些请求不被拦截,  css, js, img不被排除也会被拦截
+            .excludePathPatterns("/index.html", "/index", "/css/*", "/js/*", "/img/*");
+    }
+}
 ```
 
 
