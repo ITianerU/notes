@@ -1,6 +1,4 @@
-# SpringBoot
-
-## 配置
+# 配置
 
 ```yml
 debug: true  # 开启配置类日志输出
@@ -12,7 +10,7 @@ spring:
     name: xxx # 项目名
 ```
 
-### yaml语法(推荐使用, 支持的语法多)
+## yaml语法(推荐使用, 支持的语法多)
 
 ```yml
 # 行内写法
@@ -25,7 +23,7 @@ students:
 students: [stu1, stu2]
 ```
 
-#### yaml注入数据
+### yaml注入数据
 
 实体类
 
@@ -66,9 +64,9 @@ person:
 		age: 3
 ```
 
-### properties语法
+## properties语法
 
-#### properties注入数据
+### properties注入数据
 
 实体类
 
@@ -91,7 +89,7 @@ properties
 name=老王
 ```
 
-### 配置文件位置
+## 配置文件位置
 
 按优先级从高到低排序
 
@@ -139,9 +137,9 @@ name=老王
   	pom.xml
   ```
 
-### 多环境配置文件切换
+## 多环境配置文件切换
 
-#### 写多个配置文件
+### 写多个配置文件
 
 - application-test.yml   测试环境
 - application-dev.yml   研发环境
@@ -157,7 +155,7 @@ spring:
 		active: test
 ```
 
-#### 一个配置文件
+### 一个配置文件
 
 通过三个横杠 --- 来划分不同环境的配置
 
@@ -180,18 +178,16 @@ spring:
 
 ```
 
-### spingmvc配置
+## spingmvc配置
 
-#### 基本配置
+### 基本配置
 
 ```properties
 # 配置日期格式
 spring.mvc.date-format="yyyy-MM-dd"
 ```
 
-
-
-#### Java配置
+### Java配置
 
 ```java
 package com.itianeru.config
@@ -228,11 +224,11 @@ public class MyViewResolver implements ViewResolver{
 
 
 
-## 原理
+# 原理
 
-### 自动配置
+## 自动配置
 
-#### 注解
+### 注解
 
 - @SpringBootApplication   声明这个类是springboot应用的启动类
   - @SpringBootConfiguration   springboot配置
@@ -246,16 +242,16 @@ public class MyViewResolver implements ViewResolver{
         - getCandidateConfigurations()   获取候选的配置
   - @ComponentScan    扫描当前主启动类同级的包
 
-#### 原理分析
+### 原理分析
 
 springboot所有自动配置都是在启动的时候扫描并加载, 但是不一定生效, 会判断条件是否成立, 只有导入的对应的start, 就有了对应的启动器才能生效
 
 - springboot在启动的时候, 从类路径下/META-INF/spring.factories(在spring-boot-autoconfigure包下) 获取指定的类值
 - 将这些类导入到容器, 自动配置就会生效
 
-## 使用
+# 使用
 
-### JSR303校验
+## JSR303校验
 
 ```java
 @Component
@@ -288,11 +284,11 @@ public class Person{
 }
 ```
 
-### 静态资源
+## 静态资源
 
-#### 访问路径配置
+## 访问路径配置
 
-##### 默认配置
+### 默认配置
 
 静态资源html, js等可放置在如下目录下, 按访问优先级从高到低排序
 
@@ -310,7 +306,7 @@ demo:  # 项目名
 				templates:   # 只能通过controller跳转访问, 需要导入thymeleaf依赖
 ```
 
-##### 自定义配置(不推荐)
+### 自定义配置(不推荐)
 
 静态资源的访问路径会变成如下的路径
 
@@ -318,11 +314,18 @@ demo:  # 项目名
 spring.mvc.static-path-pattern=/itianeru/**
 ```
 
-#### 页面配置
+### 页面配置
 
 **首页**
 
 在静态资源访问目录添加  index.html
+
+**错误**
+
+在templates下创建error文件夹, springboot会根据错误码, 自动找到对应的页面
+
+- 404   /error/404.html  
+- 500   /error/500.html  
 
 **页面图标**
 
@@ -334,9 +337,9 @@ spring.mvc.static-path-pattern=/itianeru/**
 spring.mvc.favicon.enabled=false
 ```
 
-#### 模板引擎
+### 模板引擎
 
-##### 依赖
+#### 依赖
 
 ```xml
 <dependency>
@@ -349,14 +352,14 @@ spring.mvc.favicon.enabled=false
 </dependency>
 ```
 
-##### 配合
+#### 配合
 
 ```properties
 # 关闭缓存
 spring.thymeleaf.cahce=false
 ```
 
-##### 使用
+#### 使用
 
 文件放置在templates下, 需要通过controller跳转
 
@@ -392,7 +395,7 @@ spring.thymeleaf.cahce=false
 </html>
 ```
 
-##### 国际化 
+#### 国际化 
 
 在/resources/下创建文件夹 i18n
 
@@ -405,7 +408,7 @@ spring.thymeleaf.cahce=false
 
 点开xxx.properties, 窗口下方有一个Resource Bundle选项, 点开可同时配置多个不同语言配置文件的值
 
-###### 配置
+##### 配置
 
 ```properties
 # xxx为编写的配置文件的名称
@@ -447,7 +450,7 @@ public class MyMvcConfig implements WebMvcConfigurer{
 }
 ```
 
-###### 使用
+##### 使用
 
 ```html
 <!-- 使用#{}会读取国际化配置文件 -->
@@ -462,7 +465,7 @@ public class MyMvcConfig implements WebMvcConfigurer{
 <a th:href="@{当前页面路径(language='en_US')}">English</a>
 ```
 
-### 拦截器
+## 拦截器
 
 ```java
 public class MyInterceptor implements HandlerInterceptor{
@@ -491,9 +494,52 @@ public class MyMvcConfig implements WebMvcConfigurer{
 }
 ```
 
+## 数据
+
+### jdbc
+
+#### 依赖
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-jdbc</artifactId>
+</dependency>
+<dependency>
+	<groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+#### 配置
+
+```yml
+spring:
+	datasource:
+		username: xxx
+		password: xxx
+		url: jdbc:mysql://ip:3306/库名?useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
+		driver-class-name: com.mysql.jdbc.Driver  # 或者 com.mysql.cj.jdbc.Driver (mysql8.0版本以上)
+```
+
+#### 使用
+
+```java
+public class TestController{
+    @Autowired
+    private JdbcTemplte jdbcTemplate;
+    
+    @GetMappint("/user")
+    public List<User> test() throws SQLException{
+    	return jdbcTemplate.queryForList("select * form user")
+    }
+}
+```
 
 
-## 集成
+
+# 集成
 
 ### Banner
 
