@@ -337,7 +337,7 @@ spring.mvc.static-path-pattern=/itianeru/**
 spring.mvc.favicon.enabled=false
 ```
 
-### 模板引擎
+## 模板引擎
 
 #### 依赖
 
@@ -541,7 +541,7 @@ public class TestController{
 
 # 集成
 
-### Banner
+## Banner
 
 ```
 在resources文件夹下, 放置一个自定义的banner.txt文件
@@ -549,7 +549,7 @@ public class TestController{
 http://www.network-science.de/ascii/
 ```
 
-### Swagger
+## Swagger
 
 Swagger用于生成api接口文档, 并可在线测试接口
 
@@ -595,7 +595,7 @@ public class SwaggerConfig {
 启动路径/swagger-ui.html
 ```
 
-### log4j
+## log4j
 
 #### 添加依赖
 
@@ -641,7 +641,7 @@ log4j.appender.errorFile.layout = org.apache.log4j.PatternLayout
 log4j.appender.errorFile.layout.ConversionPattern = [%d{yyyy-MM-dd HH:mm:ss,SSS}]-[%p]:%m   %x  %n
 ```
 
-### mybatis
+## mybatis
 
 #### 添加依赖
 
@@ -660,44 +660,30 @@ log4j.appender.errorFile.layout.ConversionPattern = [%d{yyyy-MM-dd HH:mm:ss,SSS}
 </dependency>
 ```
 
-#### 添加配置类
+#### 添加配置
 
-在config目录下,创建MybatisConfig.java
+在启动类上添加注解,配置mapper扫描
 
-```java
-@Configuration
-@MapperScan("com.itianeru.mango.**.dao") // 扫描dao
-public class MyBatisConfig {
-    
-    @Autowired
-    private DataSource dataSource;
-    
-    public SqlSessionFactory sqlSessionFactory() throws Exception{
-        SqlSessionFactoryBean sessionFactoryBean = new SqlSessionFactoryBean();
-        sessionFactoryBean.setDataSource(dataSource);
-        // 定义包扫描
-        sessionFactoryBean.setTypeAliasesPackage("com.itianeru.mango.**.entity");
-        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        // 扫描映射文件
-        sessionFactoryBean.setMapperLocations(resolver.getResource("classpath*:**/mapper/*.xml"));
-        return sessionFactoryBean.getObject();
-    }
-}
-```
+- @MapperScan("com.itianeru.mango.**.dao")
 
-#### 配置数据源
+#### 添加配置
 
 ```properties
 # 配置数据源
 spring:
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://ip:3306/mango?useUnicode=true?zeroDateTimeBehavior=convertToNull&autoReconnect=true&characterEncoding=utf-8
+    url: jdbc:mysql://ip:3306/mango?useUnicode=true?zeroDateTimeBehavior=convertToNull&autoReconnect=true&characterEncoding=utf-8&serverTimezone=UTC
     username: username
     password: password
+
+# 配置pojo包扫描, mapper.xml扫描
+mybayis:
+	type-aliases-package: com.itianeru.pojo
+	mapper-locations: classpath:mapper/*.xml
 ```
 
-### mybatis plus
+## mybatis plus
 
 #### 添加依赖
 
@@ -875,7 +861,7 @@ public HttpResult findPage(){
 List<User> findUser(Page<User> page);
 ```
 
-### 数据库连接池-Druid
+## 数据库连接池-Druid
 
 #### 添加依赖
 
@@ -922,7 +908,14 @@ spring:
 ```java
 @Configuration
 public class DruidConfig {
-
+    
+    @ConfigurationProperties(prefix = "spring,datasource.druid")
+    @Bean
+    public DataSource druidDataSource(){
+        return new DruidDataSource();
+    }
+	
+    // 配置后台监控
     @Bean
     @ConditionalOnMissingBean
     public ServletRegistrationBean<Servlet> statViewServlet() {
@@ -963,7 +956,7 @@ public class DruidConfig {
 http://ip:port/druid/login.html
 ```
 
-### CORS 跨域访问
+## CORS 跨域访问
 
 允许服务器跨域访问
 
@@ -989,7 +982,7 @@ public class CorsConfig implements WebMvcConfigurer {
 }
 ```
 
-### Office操作
+## Office操作
 
 #### 添加依赖
 
@@ -1126,7 +1119,7 @@ public File createUserExcelFile(List<User> list) {
 }
 ```
 
-### 验证码
+## 验证码
 
 #### 添加依赖
 
@@ -1185,11 +1178,15 @@ public void captcha(HttpServletRequest request, HttpServletResponse response) th
 }
 ```
 
-### 安全认证 - Spring Security  (难--暂时略过*)
+## 安全认证 
+
+### Spring Security
 
 #### 添加依赖
 
 ```xml
+<!-- thymeleaf配置, 查看使用->模板引擎->依赖-->
+略
 <!-- Spring Security -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -1203,7 +1200,7 @@ public void captcha(HttpServletRequest request, HttpServletResponse response) th
 </dependency>
 ```
 
-### 监控服务
+## 监控服务
 
 #### 添加依赖
 
