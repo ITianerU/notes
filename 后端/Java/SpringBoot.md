@@ -861,101 +861,6 @@ public HttpResult findPage(){
 List<User> findUser(Page<User> page);
 ```
 
-## 数据库连接池-Druid
-
-#### 添加依赖
-
-```xml
-<!-- 数据库连接池 druid-->
-<dependency>
-    <groupId>com.alibaba</groupId>
-    <artifactId>druid-spring-boot-starter</artifactId>
-    <version>1.1.20</version>
-</dependency>
-```
-
-#### 添加配置
-
-```properties
-# 配置数据源, 数据库连接池
-spring:
-  datasource:
-    name: druidDataSource
-    type: com.alibaba.druid.pool.DruidDataSource
-    druid:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://152.136.157.189:3306/mango?useUnicode=true?zeroDateTimeBehavior=convertToNull&autoReconnect=true&characterEncoding=utf-8
-      username: root
-      password: Lrt123456#
-#      filters: stat,wall,log4j, config  # 配置监控统计拦截的filters, 去掉后监控界面SQL无法统计, wall用于防火墙
-      max-active: 100  # 最大连接数
-      initial-size: 1  # 初始化大小
-      max-wait: 60000 # 最大等待时间
-      min-idle: 1  # 最小连接数
-      time-between-eviction-runs-millis: 60000 # 间隔多久检测一次要关闭的空闲连接
-      min-evictable-idle-time-millis: 300000 # 一个连接在连接池中最小的生存时间
-      validation-query: 'SELECT 1 FROM DUAL' # 验证数据库连接的查询语句
-      test-while-idle: true
-      test-on-borrow: false
-      test-on-return: false
-      pool-prepared-statements: true  # 缓存
-      max-open-prepared-statements: 50
-      max-pool-prepared-statement-per-connection-size: 20
-```
-
-#### 添加配置类
-
-```java
-@Configuration
-public class DruidConfig {
-    
-    @ConfigurationProperties(prefix = "spring,datasource.druid")
-    @Bean
-    public DataSource druidDataSource(){
-        return new DruidDataSource();
-    }
-	
-    // 配置后台监控
-    @Bean
-    @ConditionalOnMissingBean
-    public ServletRegistrationBean<Servlet> statViewServlet() {
-        ServletRegistrationBean<Servlet> servletRegistrationBean = new ServletRegistrationBean<Servlet>(new StatViewServlet(), "/druid/*");
-        // 添加IP白名单, 是访问的客户端ip
-        servletRegistrationBean.addInitParameter("allow", "127.0.0.1,192.168.42.74");
-        // 添加IP黑名单，当白名单和黑名单重复时，黑名单优先级更高
-        // servletRegistrationBean.addInitParameter("deny", "192.168.25.123");
-        // 添加控制台管理用户
-        servletRegistrationBean.addInitParameter("loginUsername", "admin");
-        servletRegistrationBean.addInitParameter("loginPassword", "admin");
-        // 是否能够重置数据
-        servletRegistrationBean.addInitParameter("resetEnable", "false");
-        return servletRegistrationBean;
-    }
-
-    /**
-     * 配置服务过滤器
-     *
-     * @return 返回过滤器配置对象
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    public FilterRegistrationBean filterRegistrationBean() {
-        FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean(new WebStatFilter());
-        // 添加过滤规则
-        filterRegistrationBean.addUrlPatterns("/*");
-        // 忽略过滤格式
-        filterRegistrationBean.addInitParameter("exclusions", "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*,");
-        return filterRegistrationBean;
-    }
-}
-```
-
-#### 访问监控页面
-
-```
-http://ip:port/druid/login.html
-```
-
 ## CORS 跨域访问
 
 允许服务器跨域访问
@@ -1186,7 +1091,12 @@ public void captcha(HttpServletRequest request, HttpServletResponse response) th
 
 ```xml
 <!-- thymeleaf配置, 查看使用->模板引擎->依赖-->
-略
+<!-- 略 -->
+<!-- web -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
 <!-- Spring Security -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -1198,6 +1108,140 @@ public void captcha(HttpServletRequest request, HttpServletResponse response) th
     <artifactId>jjwt</artifactId>
     <version>0.9.1</version>
 </dependency>
+```
+
+### 使用
+
+```java
+package com.itianeru.config
+    
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+    // 授权
+    @Override
+    protected void configure(HttpSecurity http) throws Exception{
+        // 首页("/") 允许全部人访问
+        http.authorizeRequests().antMatchers("/").permitAll()
+            .antMatchers("/路径1/**").hasRole("vip1")   // 配置页面权限
+            .antMatchers("/路径2/**").hasRole("vip2")
+            .antMatchers("/路径3/**").hasRole("vip3");
+        
+        // 没有权限跳转到登录页, 会自动访问请求 /login
+        http.formLogin();
+        // super.configure(http);
+    }
+    
+    // 认证
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception{
+        // 给用户配置权限, 会从内存中读
+        auth.inMemoryAuthentication()
+            .passwordEncoder(new BCryptPasswordEncoder())   // 指定密码加密方式
+            .withUser("itianeru")   
+            // 密码加密, 授权
+            .password(new BCryptPasswordEncoder().encode("123456")).roles("vip1", "vip2") 
+            .and
+            .withUser("root")
+            .password(new BCryptPasswordEncoder().encode("123456")).roles("vip1", "vip2", "vip3");
+    }
+}
+```
+
+
+
+## 数据库连接池-Druid
+
+#### 添加依赖
+
+```xml
+<!-- 数据库连接池 druid-->
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>druid-spring-boot-starter</artifactId>
+    <version>1.1.20</version>
+</dependency>
+```
+
+#### 添加配置
+
+```properties
+# 配置数据源, 数据库连接池
+spring:
+  datasource:
+    name: druidDataSource
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://152.136.157.189:3306/mango?useUnicode=true?zeroDateTimeBehavior=convertToNull&autoReconnect=true&characterEncoding=utf-8
+      username: root
+      password: Lrt123456#
+#      filters: stat,wall,log4j, config  # 配置监控统计拦截的filters, 去掉后监控界面SQL无法统计, wall用于防火墙
+      max-active: 100  # 最大连接数
+      initial-size: 1  # 初始化大小
+      max-wait: 60000 # 最大等待时间
+      min-idle: 1  # 最小连接数
+      time-between-eviction-runs-millis: 60000 # 间隔多久检测一次要关闭的空闲连接
+      min-evictable-idle-time-millis: 300000 # 一个连接在连接池中最小的生存时间
+      validation-query: 'SELECT 1 FROM DUAL' # 验证数据库连接的查询语句
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true  # 缓存
+      max-open-prepared-statements: 50
+      max-pool-prepared-statement-per-connection-size: 20
+```
+
+#### 添加配置类
+
+```java
+@Configuration
+public class DruidConfig {
+    
+    @ConfigurationProperties(prefix = "spring,datasource.druid")
+    @Bean
+    public DataSource druidDataSource(){
+        return new DruidDataSource();
+    }
+	
+    // 配置后台监控
+    @Bean
+    @ConditionalOnMissingBean
+    public ServletRegistrationBean<Servlet> statViewServlet() {
+        ServletRegistrationBean<Servlet> servletRegistrationBean = new ServletRegistrationBean<Servlet>(new StatViewServlet(), "/druid/*");
+        // 添加IP白名单, 是访问的客户端ip
+        servletRegistrationBean.addInitParameter("allow", "127.0.0.1,192.168.42.74");
+        // 添加IP黑名单，当白名单和黑名单重复时，黑名单优先级更高
+        // servletRegistrationBean.addInitParameter("deny", "192.168.25.123");
+        // 添加控制台管理用户
+        servletRegistrationBean.addInitParameter("loginUsername", "admin");
+        servletRegistrationBean.addInitParameter("loginPassword", "admin");
+        // 是否能够重置数据
+        servletRegistrationBean.addInitParameter("resetEnable", "false");
+        return servletRegistrationBean;
+    }
+
+    /**
+     * 配置服务过滤器
+     *
+     * @return 返回过滤器配置对象
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public FilterRegistrationBean filterRegistrationBean() {
+        FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean(new WebStatFilter());
+        // 添加过滤规则
+        filterRegistrationBean.addUrlPatterns("/*");
+        // 忽略过滤格式
+        filterRegistrationBean.addInitParameter("exclusions", "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*,");
+        return filterRegistrationBean;
+    }
+}
+```
+
+#### 访问监控页面
+
+```
+http://ip:port/druid/login.html
 ```
 
 ## 监控服务
