@@ -1108,15 +1108,24 @@ public void captcha(HttpServletRequest request, HttpServletResponse response) th
     <artifactId>jjwt</artifactId>
     <version>0.9.1</version>
 </dependency>
+<!-- thymeleaf-spring-security 整合包-->
+<dependency>
+    <groupId>org.thymeleaf.extras</groupId>
+    <artifactId>thymeleaf-extras-springsecurity5</artifactId>
+    <version>3.0.4.RELEASE</version>
+</dependency>
 ```
 
-### 使用
+#### 使用
 
 ```java
 package com.itianeru.config
     
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
+    @Autowired
+    private DataSource dataSource;
+    
     // 授权
     @Override
     protected void configure(HttpSecurity http) throws Exception{
@@ -1126,9 +1135,27 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .antMatchers("/路径2/**").hasRole("vip2")
             .antMatchers("/路径3/**").hasRole("vip3");
         
-        // 没有权限跳转到登录页, 会自动访问请求 /login
-        http.formLogin();
-        // super.configure(http);
+        // 没有权限跳转到登录页, 该登录页为自带的登录页, 默认会自动访问请求 /login
+        http.formLogin()
+            // loginPage("/toLogin"); 自定义登录页
+            .loginPage("/toLogin")
+            // 自定义前端表单登录时传递的参数名称
+            .usernameParameter("username").passwordParameter("password")
+            // 设置前端表单登录时调用的接口, /login
+            // 不设置时, 前端调用的接口与loginPage相同
+            .loginProcessingUrl("/login");
+        // 开启注销功能  前端调用url /logout
+        htto.fromLogout()
+           	// 注销时, 清空cookie和session
+            .deleteCookies("remove").invalidateHttpSession(false);
+        	// 指定注销后, 跳转的页面, 默认是登录页
+        	.logoutSuccesssUrl("/toLogin");
+        // 关闭csrf功能
+        // http.csrf().disable();
+        // 开启记住我功能
+        http.rememberMe()
+            // 自定义前端传递的参数
+            .rememberMeParameter("remember");
     }
     
     // 认证
@@ -1144,7 +1171,55 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .withUser("root")
             .password(new BCryptPasswordEncoder().encode("123456")).roles("vip1", "vip2", "vip3");
     }
+    // 认证, 从数据库z
+    @Override
+    protected void configureGlobal(AuthenticationManagerBuilder auth) throws Exception{
+        UserBuilder users = User.whitDefalutPasswordEncoder();
+        // 给用户配置权限, 会从数据库中读
+        auth.jdbcAuthentication().dataSource(dataSource).withDafaultSchema()
+            .withUser(users.username("itianeru").password("123456").roles("vip1"))   
+            .withUser(users.username("root").password("123456").roles("vip1", "vip2", "vip3");
+    }     
 }
+```
+
+#### 前端页面控制权限
+
+```html
+<!-- 加入命名空间, thymeleaf-extras-springsecurity4-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/thymeleaf-extras-springsecurity4">
+<body>
+    <!-- 判断用户是否登录 -->
+	<div sec:authorize=="!isAuthenticated()">
+        <a th:href="@{/toLogin}">登录</a>
+    </div>
+    <div sec:authorize=="isAuthenticated()">
+        用户名<span sec:authentication="name"></span>
+        用户名<span sec:authentication="principal.authorites"></span>
+        <a th:href="@{/logout}">注销</a>
+    </div>
+    
+    <!-- 有某个权限才会显示 -->
+    <div sec:authorize="hasRole('vip1')">
+        内容
+    </div>
+    
+    
+</body>
+</html>
+```
+
+### Shiro
+
+#### 依赖
+
+```xml
+<dependency>
+    <groupId>org.apache.shiro</groupId>
+    <artifactId>shiro-core</artifactId>
+    <version>1.4.1</version>
+</dependency>
 ```
 
 
