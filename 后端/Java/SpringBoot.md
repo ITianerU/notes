@@ -1224,23 +1224,23 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 <dependency>
     <groupId>org.slf4j</groupId>
     <artifactId>jcl-over-slf4j</artifactId>
-    <scope>runtime</scope>
+    <version>1.7.21</version>
 </dependency>
 <dependency>
     <groupId>org.slf4j</groupId>
     <artifactId>slf4j-log4j12</artifactId>
-    <scope>runtime</scope>
+    <version>1.7.21</version>
 </dependency>
 <dependency>
     <groupId>log4j</groupId>
     <artifactId>log4j</artifactId>
-    <scope>runtime</scope>
+    <version>runtime</version>
 </dependency>
 ```
 
 #### 配置
 
-shiro.ini
+resource/shiro.ini
 
 ```ini
 [users]
@@ -1255,7 +1255,9 @@ schwartz = lightsaber:*
 goodguy = winnebago:drive:eagle5
 ```
 
-#### 使用
+#### 快速使用
+
+未集成springboot
 
 ```java
 public class Quickstart {
@@ -1263,59 +1265,71 @@ public class Quickstart {
 
     public static void main(String[] args) {
         Factory<SecurityManager> factory = new IniSecurityManagerFactory("classpath:shiro.ini");
-        
+
         SecurityManager securityManager = factory.getInstance();
         SecurityUtils.setSecurityManager(securityManager);
 
+        // 获取当前的用户对象
         Subject currentUser = SecurityUtils.getSubject();
 
+        // 通过当前用户, 去获取shiro session
         Session session = currentUser.getSession();
+        // 在session中, 存取值
         session.setAttribute("someKey", "aValue");
         String value = (String) session.getAttribute("someKey");
         if (value.equals("aValue")) {
             log.info("Retrieved the correct value! [" + value + "]");
         }
-
+		
+        // 判断当前的用户是否被认证
         if (!currentUser.isAuthenticated()) {
+            // 拿到token
             UsernamePasswordToken token = new UsernamePasswordToken("lonestarr", "vespa");
+            // 设置记住我
             token.setRememberMe(true);
             try {
+                // 执行登录
                 currentUser.login(token);
+                // 未知账户异常
             } catch (UnknownAccountException uae) {
                 log.info("There is no user with username of " + token.getPrincipal());
+                // 密码不正确
             } catch (IncorrectCredentialsException ice) {
                 log.info("Password for account " + token.getPrincipal() + " was incorrect!");
+                // 用户被锁定
             } catch (LockedAccountException lae) {
                 log.info("The account for username " + token.getPrincipal() + " is locked.  " +
-                        "Please contact your administrator to unlock it.");
-            }
-            catch (AuthenticationException ae) {
+                         "Please contact your administrator to unlock it.");
+                // 认证异常
+            }catch (AuthenticationException ae) {
             }
         }
+        // 打印当前用户的认证信息
         log.info("User [" + currentUser.getPrincipal() + "] logged in successfully.");
-
+		
+        // 判断用户是否有哪些角色
         if (currentUser.hasRole("schwartz")) {
             log.info("May the Schwartz be with you!");
         } else {
             log.info("Hello, mere mortal.");
         }
 
-        //test a typed permission (not instance-level)
+        // 判断权限
         if (currentUser.isPermitted("lightsaber:wield")) {
             log.info("You may use a lightsaber ring.  Use it wisely.");
         } else {
             log.info("Sorry, lightsaber rings are for schwartz masters only.");
         }
 
-        //a (very powerful) Instance Level permission:
+        // 判断权限
         if (currentUser.isPermitted("winnebago:drive:eagle5")) {
-            log.info("You are permitted to 'drive' the winnebago with license plate (id) 'eagle5'.  " +
-                    "Here are the keys - have fun!");
+            log.info("You are permitted to 'drive' the winnebago with license plate (id) 'eagle5'.  
+                     " + "Here are the keys - have fun!");
         } else {
             log.info("Sorry, you aren't allowed to drive the 'eagle5' winnebago!");
         }
 
-        //all done - log out!
+        // 注销
         currentUser.logout();
 
         System.exit(0);
@@ -1323,6 +1337,93 @@ public class Quickstart {
 }
 
 
+```
+
+#### 集成springboot
+
+##### 依赖
+
+```xml
+<!-- thymeleaf配置, 查看使用->模板引擎->依赖-->
+<!-- 略 -->
+<!-- web -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.apache.shiro</groupId>
+    <artifactId>shiro-spring-boot-web-starter</artifactId>
+    <version>1.7.0</version>
+</dependency>
+```
+
+##### 配置
+
+```java
+@Configuration
+public class ShiroConfig{
+    // ShiroFilterBean
+    @Bean
+    public ShiroFilterBean getShiroFilterBean(
+        @Qualifier("securityManager")DefaultWebSecurityManager securityManager){
+        ShiroFilterBean shiroFilterBean = new ShiroFilterBean();
+        // 设置安全管理器
+        shiroFilterBean.setSecurityManager(securityManager);
+        // 添加shiro的内置过滤器
+        /*
+        	anon:无需认证就可以访问
+        	authc:必须认证才能访问
+        	user:必须拥有记住我功能才能访问
+        	perms:拥有对某个资源的权限才能访问
+        	role:拥有摸个角色的权限才能访问
+        */
+        Map<String, String> filterMsp = new LinkedHashMap<>();
+        // 配置/user/add该文件的访问权限, 页面跳转需要controller做跳转
+        filterMap.put("/user/add", "authc");
+        filterMap.put("/user/update", "authc");
+        filterMap.put("/user/*", "authc");
+        shiroFilterBean.setFilterChainDefinitionMap(filterMap);
+        
+        // 无访问权限跳转到登录页, 登录页需要自己写
+        shiroFilterBean.setLoginUrl("/toLogin");
+        return shiroFilterBean;
+    }
+        
+    // DefaultWebSecurityManager
+    @Bean(name = "securityManager")
+    public DefaultWebSecurityManager getDefaultWebSecurityManager(
+        @Qualifier("userRealm")UserRealm userRealm){
+        DefaultWebSecurityManager securityManager = new DefaultWebSecurityManager();
+        // 关联Realm
+        securityManager.setRealm(userRealm);
+        return securityManager;
+    }
+    // 创建 realm 对象, 需要自定义
+    @Bean
+    public UserRealm userRealm(){
+        return new UserRealm();
+    }
+}
+```
+
+##### 自定义Realm
+
+```java
+public class UserRealm extends AuthorizingRealm{
+    // 授权
+    @Override
+    protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals){
+        
+    }
+    
+    // 认证
+    @Override
+    protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) 
+        throws AuthenticationExcpetion{
+        
+    }
+}
 ```
 
 
