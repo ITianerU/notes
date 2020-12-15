@@ -1421,12 +1421,13 @@ public class UserRealm extends AuthorizingRealm{
     @Override
     protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) 
         throws AuthenticationExcpetion{
+        Subject subject = SecurityUtils,getSubject();
         
     }
 }
 ```
 
-
+##### controller
 
 ## 数据库连接池-Druid
 
