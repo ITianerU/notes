@@ -1383,10 +1383,14 @@ public class ShiroConfig{
         filterMap.put("/user/add", "authc");
         filterMap.put("/user/update", "authc");
         filterMap.put("/user/*", "authc");
+        // 有detail权限才能访问
+        filterMap.put("/user/detail", "perms[user:detail]");
         shiroFilterBean.setFilterChainDefinitionMap(filterMap);
         
         // 无访问权限跳转到登录页, 登录页需要自己写
         shiroFilterBean.setLoginUrl("/toLogin");
+        // 跳转到自定义的未授权页面
+        shiroFilterBean.setUnauthorizedUrl("/noauth");
         return shiroFilterBean;
     }
         
@@ -1411,23 +1415,65 @@ public class ShiroConfig{
 
 ```java
 public class UserRealm extends AuthorizingRealm{
+    // userService 是自定义的service层, 从数据库中取数据
+    @Autowired
+    private UserServlce userService;
+    
     // 授权
     @Override
     protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals){
-        
+       	SimpleAuthorizationInfo info = new SimpleAuthorizationInfo();
+        // 获取当前用户  
+    	subject subject = SecurityUtils.getSubject();
+        User currentUser = (User)subject.getPrincipal();
+        // 添加权限 currentUser.getPerms()获取权限
+        info.addStringPermission(currentUser.getPerms());
+        return info;
     }
     
     // 认证
     @Override
     protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) 
         throws AuthenticationExcpetion{
-        Subject subject = SecurityUtils,getSubject();
-        
+        UsernamePasswordToken userToken = (UsernamePasswordToken)token;
+        // 从数据库中读取用户名和密码
+        User user = userServlce.getUser(userToken.getUsername());
+        if(user == null){
+            // 抛出异常UnknownAccountException
+            return null;
+        }
+      	// 密码认证, 将数据user放到第一个参数, 可在其他位置获取到该数据
+        return new SimpleAuthenticationInfo(user, user.getPassword(),"");
     }
 }
 ```
 
 ##### controller
+
+```java
+@RequestMapping("/login")
+public String login(String username, String password, Model model){
+    // 获取当前用户  
+    Subject subject = SecurityUtils.getSubject();
+    // 获取token
+    UsernamePasswordToken token = new UserNamePasswordToken(username, password);
+    try{
+        subject.login(token);
+        return "index";
+   	// 用户名不存在异常
+    }catch(UnknownAccountException e){
+        model.addAttribute("msg", "用户名或密码错误");
+        return "login";
+    // 密码错误异常
+    }catch(IncorrectCredentialsException e){
+        model.addAttribute("msg", "用户名或密码错误");
+        return "login";
+    }
+    
+}
+```
+
+
 
 ## 数据库连接池-Druid
 
