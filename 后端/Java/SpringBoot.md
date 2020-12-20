@@ -578,12 +578,37 @@ Swagger用于生成api接口文档, 并可在线测试接口
 public class SwaggerConfig {
 
     @Bean
-    public Docket createResultApi(){
-        return new Docket(DocumentationType.SWAGGER_2).apiInfo(apiInfo()).select().apis(RequestHandlerSelectors.any()).paths(PathSelectors.any()).build();
+    public Docket docket(){
+        // 设置需要使用swagger的环境, dev和test表示application-dev.yml和application-test.yml
+        Profiles profiles = Profiles.of("dev", "test");
+        // 判断当前是否在自己设定的环境
+        // 当当前环境为dev或者test时, 返回true
+        boolean flag = environment.acceptsProfiles(profiles);
+        
+        return new Docket(DocumentationType.SWAGGER_2)
+            .apiInfo(apiInfo())
+            // 关闭swagger, 可配置到application.yml中注入
+            .enable(flag)
+            .select()
+            // 配置要扫描接口的方式  RequestHandlerSelectors.basePackage包扫描
+            // RequestHandlerSelectors.any() 扫描全部
+            // RequestHandlerSelectors.withClassAnnotation(RestController.class) 扫描类上的注解
+            // RequestHandlerSelectors.withMethodAnnotation(GetMapping.class) 扫描方法上的注解
+            .apis(RequestHandlerSelectors.basePackage("com.itianeru.controller"))
+            // 配置路径过滤
+            // PathSelectors.ant 扫描指定请求路径的接口
+            // PathSelectors.any 全部
+            .path(PathSelectors.ant("/user/**"))
+            .build();
     }
-    
+    // 配置swagger信息
     private ApiInfo apiInfo(){
-        return new ApiInfoBuilder().build();
+        // 作者信息
+        Contact contact = new Contact("ITianerU","主页地址", "邮箱");
+        return new ApiInfo("文档标题", "文档描述", "版本", "组织url", contact, "许可证", "许可证连接",
+                           new ArrayList()
+        )
+        // return new ApiInfoBuilder().build();
     }
 }
 ```
@@ -594,6 +619,20 @@ public class SwaggerConfig {
 项目启动后,访问
 启动路径/swagger-ui.html
 ```
+
+##### controller
+
+```java
+@RestController
+public class HelloController{
+    @GetMapping("/hello")
+    public String hello(){
+        return "hello";
+    }
+}
+```
+
+
 
 ## log4j
 
@@ -1203,9 +1242,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     <!-- 有某个权限才会显示 -->
     <div sec:authorize="hasRole('vip1')">
         内容
-    </div>
-    
-    
+    </div>  
 </body>
 </html>
 ```
@@ -1356,6 +1393,13 @@ public class Quickstart {
     <artifactId>shiro-spring-boot-web-starter</artifactId>
     <version>1.7.0</version>
 </dependency>
+
+<!-- thymeleaf-spring-shiro 整合包-->
+<dependency>
+    <groupId>com.github.theborakompanioni</groupId>
+    <artifactId>thymeleaf-extras-shiro</artifactId>
+    <version>2.0.0</version>
+</dependency>
 ```
 
 ##### 配置
@@ -1407,6 +1451,12 @@ public class ShiroConfig{
     @Bean
     public UserRealm userRealm(){
         return new UserRealm();
+    }
+    
+    // 整合thymeleaf
+    @Bean
+    public ShiroDialect getShiroDialect(){
+        return new ShiroDialect();
     }
 }
 ```
@@ -1471,6 +1521,25 @@ public String login(String username, String password, Model model){
     }
     
 }
+```
+
+##### 页面
+
+```html
+<!-- 加入命名空间, thymeleaf-extras-springsecurity4-->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:shiro="https://www.thymeleaf.org/thymeleaf-extras-shiro">
+<body>
+    <!-- 未登录时显示 -->
+	<div shiro:guest="true">
+        <!-- 略 -->
+    </div>
+    <!-- 判断是否有某个权限 -->
+	<div shiro:hasPermission="user:add">
+        <!-- 略 -->
+    </div>
+</body>
+</html>
 ```
 
 
