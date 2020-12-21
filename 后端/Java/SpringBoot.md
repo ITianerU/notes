@@ -537,7 +537,22 @@ public class TestController{
 }
 ```
 
+## 异步任务
 
+### 开启异步功能
+
+```java
+@EnableAsync
+public class 启动类{}
+```
+
+##### 使用
+
+```java
+// 使用异步
+@Async
+public String method(){}
+```
 
 # 集成
 
@@ -587,6 +602,8 @@ public class SwaggerConfig {
         
         return new Docket(DocumentationType.SWAGGER_2)
             .apiInfo(apiInfo())
+            // 配置多个docket通过groupName来分组
+            .groupName("ITianerU")
             // 关闭swagger, 可配置到application.yml中注入
             .enable(flag)
             .select()
@@ -623,12 +640,34 @@ public class SwaggerConfig {
 ##### controller
 
 ```java
+@Api("控制类")
 @RestController
 public class HelloController{
     @GetMapping("/hello")
     public String hello(){
         return "hello";
     }
+    
+    @ApiOperation("xxxx接口")
+    @GetMapping("/hello2")
+    public String hello(@ApiParam("用户名")String Username){
+        return "hello" + Username;
+    }
+}
+```
+
+##### 实体类
+
+controller接口中, 如果返回实体类, swagger-ui就会显示该实体类
+
+```java
+@Api("注释")
+@ApiModel("用户实体类")
+public class User{
+    @ApiModelProperty("用户名")
+    private String username;
+    @ApiModelProperty("年龄")
+    private Integer age;
 }
 ```
 
@@ -1708,5 +1747,63 @@ public class MangoMonitorApplication {
 
 ```
 访问http://localhost:8000, 可看到被监控的服务
+```
+
+## 邮件
+
+### 依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
+```
+
+### 配置
+
+```yml
+spring:
+	mail:
+		username: 邮件地址
+		password: 授权码
+		host: smtp.163.com
+		properties: 
+			mail:
+				smtl:
+					ssl:
+						enable: true # 开启加密验证
+```
+
+### 使用
+
+```java
+@Service
+public class EmailService{
+    @AutoWired
+    private JavaMailSenderImpl mailSender;
+    
+    public void sendTest(){
+        // 简单邮件
+        SimpleMaillMessage msg = new SimpleMaillMessage ();
+        msg.setSubject("标题");
+        msg.setText("内容");
+        msg.setTo("目标邮箱");
+        msg.setFrom("从哪个邮箱发送");
+        mailSender.send(msg);
+    }
+    
+    public void sendTest(){
+        // 复杂邮件
+        MimeMessage msg = new MimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(msg, true);
+        helper.setSubject("标题");
+        helper.setText("<p>html文本</p>", true); // true开启html
+        helper.addAttachment("附件名", new File("附件路径"));  // 添加附件, 可添加多个
+        helper.setTo("目标邮箱");
+        helper.setFrom("从哪个邮箱发送");
+        mailSender.send(msg);
+    }
+}
 ```
 
