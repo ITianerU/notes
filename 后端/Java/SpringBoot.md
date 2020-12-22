@@ -554,6 +554,29 @@ public class 启动类{}
 public String method(){}
 ```
 
+## 定时任务
+
+### 开启定时任务
+
+```java
+@EnableScheduling
+public class 启动类{}
+```
+
+### 使用
+
+```java
+@Service
+public class xxxService{
+    // 秒 分 时 日 月 星期
+    @Scheduled(cron = "0 * * * * 0-7")
+    public String method(){
+        System.out.println("执行")
+    }
+}
+
+```
+
 # 集成
 
 ## Banner
@@ -1806,4 +1829,131 @@ public class EmailService{
     }
 }
 ```
+
+## Redis
+
+### 说明
+
+springboot在2.x之后, jedis被替换为lettuce, lettuce性能更高
+
+**jedis:** 采用直连, 多线程操作不安全, 想要避免不安全, 需要使用jedis pool连接池, 像BIO模式
+
+**lettuce:**  采用netty, 实例可以在多个线程之间共享, 线程安全, 可减少线程数据, 像nio模式 
+
+### 依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+```
+
+### 配置
+
+```yml
+spring:
+	redis: 
+		host: 地址
+		port: 6379		
+```
+
+### 使用
+
+```java
+@Service
+private class xxxService{
+    @Autowired
+    private RedisTemplate redisTemplate;
+    
+    public void method(){
+        // opsForValue() 操作字符串
+        // opsForList() 操作list
+        redisTemplate.opsForValue().set("key", "value")
+    }
+}
+```
+
+#### 自定义redisTemplate
+
+```java
+@Configuration
+public class RedisConfig{
+    @Bean
+    public RedisTemplate<String, Object> 
+        redisTemplate(RedisConnectionFactory redisConnectionFactory){
+        RedisTemplate<String, Object> template = new RedisTemplate();
+        // Jackson序列化
+        Jackson2JsonRedisSerializer<Obekct> serializer = new Jackson2JsonRedisSerializer<>();
+        ObjectMapper om = new ObjectMapper();
+        om.setVisivility(PropertyAccessor.All, JsonAutoDetect.Visivility.ANY);
+        om.enableDefaultTyping(ObjectMapper.defaultTyping.NON_FINAL);
+        serializer.setObjectMapper(om);
+        // string序列化
+        StringRedisSerializer stringSerializer = new StringRedisSerializer<>();
+     	// 设置序列化方式
+        template.setKeySerializer(stringSerializer);
+        template.setValueSerializer(serializer);
+        template.setHashKeySerializer(stringSerializer);
+        template.setHashValueSerializer(serializer);
+        template.afterPropertiesSet();
+        // 设置连接工厂
+        template.setConnectionFactory(redisConnectionFactory);
+        return template;
+    }
+}
+```
+
+#### RedisUtils
+
+```java
+@Component
+public class RedisUtils{
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+    
+    // 设置缓存失效时间
+    public boolean expire(String key, long time){
+        try{
+            if(time > 0){
+                redisTemplate.expire(key, time, TimeUnit.SECONDES);
+            }
+            return true;
+        }catch(Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    // 获取过期时间
+    public boolean getExpire(String key){
+       return redisTemplate.getExpire(key);
+    }
+    
+    // 判断key是否存在
+    public boolean hasKey(String key){
+        try{
+            return redisTemplate.hasKey(key);
+        }catch(Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    // 删除缓存
+    public void del(String... key){
+        if(key != null && key.length > 0){
+            if(ket.length == 1){
+                redisTemplate.delete(key[0]);
+            }else{
+                redisTemplate.delete(CollectionUtils.arrayToList(key));
+            }
+        }
+    }
+}
+```
+
+
+
+
 
