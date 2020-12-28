@@ -151,6 +151,16 @@ public class UserServiceImpl implements IUserService {
 
 # 监控服务
 
+## 下载地址
+
+https://github.com/apache/dubbo-admin
+
+## 文档
+
+https://github.com/apache/dubbo-admin/blob/develop/README_ZH.md
+
+## 使用
+
 在部署zookeeper的服务器上,  在tomcat中放入dubbo-admin的war包， 并启动tomcat
 
 访问服务，  http:服务器ip:8080/dubbo-admin
