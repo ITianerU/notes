@@ -1907,50 +1907,589 @@ public class RedisConfig{
 #### RedisUtils
 
 ```java
+package com.itianeru.redisdemo.redisdemo;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 @Component
-public class RedisUtils{
-    @Autowired
+public final class RedisUtil {
+
+    @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
-    
-    // 设置缓存失效时间
+
+    /**
+     * 指定缓存失效时间
+     * @param key 键
+     * @param time 时间(秒)
+     * @return boolean 成功/失败
+     */
     public boolean expire(String key, long time){
-        try{
-            if(time > 0){
-                redisTemplate.expire(key, time, TimeUnit.SECONDES);
+        try {
+            if (time > 0){
+                redisTemplate.expire(key, time, TimeUnit.SECONDS);
             }
             return true;
-        }catch(Exception e){
+        }catch (Exception e){
             e.printStackTrace();
             return false;
         }
     }
-    
-    // 获取过期时间
-    public boolean getExpire(String key){
-       return redisTemplate.getExpire(key);
+
+    /**
+     * 根据key 获取过期时间
+     * @param key 键
+     * @return long 时间, 返回0表示永久有效
+     */
+    public long getExpire(String key) {
+        return redisTemplate.getExpire(key, TimeUnit.SECONDS);
     }
-    
-    // 判断key是否存在
+
+    /**
+     * 判断key是否存在
+     * @param key 键
+     * @return boolean 存在/不存在
+     */
     public boolean hasKey(String key){
-        try{
+        try {
             return redisTemplate.hasKey(key);
-        }catch(Exception e){
+        }catch (Exception e){
             e.printStackTrace();
             return false;
         }
     }
-    
-    // 删除缓存
+
+    /**
+     * 删除缓存
+     * @param key 键, 可传多个
+     * @return void
+     */
     public void del(String... key){
-        if(key != null && key.length > 0){
-            if(ket.length == 1){
+        if (key != null && key.length > 0){
+            if (key.length == 1) {
                 redisTemplate.delete(key[0]);
-            }else{
-                redisTemplate.delete(CollectionUtils.arrayToList(key));
+            } else {
+                redisTemplate.delete((Collection<String>) CollectionUtils.arrayToList(key));
             }
+        }
+    }
+
+    // -------------------------------------  String -----------------------------------------------
+
+    /**
+     * 普通缓存获取
+     * @param key 键
+     * @return java.lang.Object 值
+     */
+    public Object get(String key) {
+        return key == null ? null : redisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * 普通缓存放入
+     * @param key 键
+     * @param value 值
+     * @return boolean 成功/失败
+     */
+    public boolean set(String key, Object value) {
+        try {
+            redisTemplate.opsForValue().set(key, value);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 普通缓存放入, 并设置过期时间
+     * @param key 键
+     * @param value 值
+     * @param time 时间(秒) time<=0 将设置无限期
+     * @return boolean 成功/失败
+     */
+    public boolean set(String key, Object value, long time) {
+        try {
+            if (time > 0){
+                redisTemplate.opsForValue().set(key, value, time, TimeUnit.SECONDS);
+            } else {
+                set(key, value);
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 增加(整数)
+     * @param key 键
+     * @param delta 要增加的值
+     * @return long 增加之后的数
+     */
+    public long incr(String key, long delta) {
+        if (delta < 0){
+            throw new RuntimeException("要增加的值必须大于0");
+        }
+        return redisTemplate.opsForValue().increment(key, delta);
+    }
+
+    /**
+     * 增加(浮点数)
+     * @param key 键
+     * @param delta 要增加的值
+     * @return double 增加之后的数
+     */
+    public double incr(String key, double delta) {
+        if (delta < 0){
+            throw new RuntimeException("要增加的值必须大于0");
+        }
+        return redisTemplate.opsForValue().increment(key, delta);
+    }
+
+
+    /**
+     * 减少(整数)
+     * @param key 键
+     * @param delta 要减少的值
+     * @return long 减少之后的数
+     */
+    public long decr(String key, long delta) {
+        if (delta < 0){
+            throw new RuntimeException("要减少的值必须大于0");
+        }
+        return redisTemplate.opsForValue().increment(key, -delta);
+    }
+
+    /**
+     * 减少(浮点数)
+     * @param key 键
+     * @param delta 要减少的值
+     * @return double
+     */
+    public double decr(String key, double delta) {
+        if (delta < 0){
+            throw new RuntimeException("要减少的值必须大于0");
+        }
+        return redisTemplate.opsForValue().increment(key, -delta);
+    }
+
+    // ------------------------------------ Map ------------------------------------------------
+
+    /**
+     * 获取hash中某一项的值
+     * @param key 键
+     * @param item 项
+     * @return java.lang.Object 值
+     */
+    public Object hget(String key, String item) {
+        return redisTemplate.opsForHash().get(key, item);
+    }
+    
+    /**
+     * 获取hash所有键值
+     * @param key 键 
+     * @return java.util.Map<java.lang.Object,java.lang.Object> Map 键值对
+     */
+    public Map<Object, Object> hmget(String key) {
+        return redisTemplate.opsForHash().entries(key);
+    }
+
+    /**
+     * 存入hash
+     * @param key 键
+     * @param map 多个键值
+     * @return boolean 成功/失败
+     */
+    public boolean hmset(String key, Map<String, Object> map) {
+        try {
+            redisTemplate.opsForHash().putAll(key, map);
+            return true;
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 存入hash, 并指定过期时间
+     * @param key 键
+     * @param map 多个键值
+     * @param time 时间(秒) time<=0 将设置无限期
+     * @return boolean 成功/失败
+     */
+    public boolean hmset(String key, Map<String, Object> map, long time) {
+        try {
+            redisTemplate.opsForHash().putAll(key, map);
+            if (time < 0) {
+                expire(key, time);
+            }
+            return true;
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 设置hash中某一项的值, 如果该项不存在将被创建
+     * @param key 键
+     * @param item hash中key
+     * @param value 值
+     * @return boolean 成功/失败
+     */
+    public boolean hset(String key, String item, Object value) {
+        try {
+            redisTemplate.opsForHash().put(key, item, value);
+            return true;
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 设置hash中某一项的值, 如果该项不存在将被创建, 并指定过期时间
+     * @param key 键
+     * @param item hash中key
+     * @param value 值
+     * @param time 时间(秒) time<=0 将设置无限期 注意: 如果已存在的hash有过期时间, 这里会替换原有的过期时间
+     * @return boolean 成功/失败
+     */
+    public boolean hset(String key, String item, Object value, long time) {
+        try {
+            redisTemplate.opsForHash().put(key, item, value);
+            if (time > 0) {
+                expire(key, time);
+            }
+            return true;
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 删除hash表中的值
+     * @param key 键
+     * @param item 要删除的项, 可以指定多个
+     * @return void
+     */
+    public void hdel(String key, Object... item) {
+        redisTemplate.opsForHash().delete(key, item);
+    }
+
+    /**
+     * 判断hash表中是否有该项的值
+     * @param key 键
+     * @param item 项
+     * @return boolean 存在/不存在
+     */
+    public boolean hHasKey(String key, String item) {
+        return redisTemplate.opsForHash().hasKey(key, item);
+    }
+
+    /**
+     * 增加hash中某一项(整数), 如果不存在会创建一个
+     * @param key 键
+     * @param item 项
+     * @param delta 要增加的值
+     * @return long 增加后的数
+     */
+    public long hincr(String key, String item, long delta) {
+        return redisTemplate.opsForHash().increment(key, item, delta);
+    }
+
+    /**
+     * 减少hash中某一项(浮点数), 如果不存在会创建一个
+     * @param key 键
+     * @param item 项
+     * @param delta 要增加的值
+     * @return double 增加后的数
+     */
+    public double hincr(String key, String item, double delta) {
+        return redisTemplate.opsForHash().increment(key, item, delta);
+    }
+
+    /**
+     * 减少hash中某一项(整数), 如果不存在会创建一个
+     * @param key 键
+     * @param item 项
+     * @param delta 要减少的值
+     * @return long 减少后的数
+     */
+    public long hdecr(String key, String item, long delta) {
+        return redisTemplate.opsForHash().increment(key, item, -delta);
+    }
+
+    /**
+     * 减少hash中某一项(浮点数), 如果不存在会创建一个
+     * @param key 键
+     * @param item 项
+     * @param delta 要减少的值
+     * @return double 减少后的数
+     */
+    public double hdecr(String key, String item, double delta) {
+        return redisTemplate.opsForHash().increment(key, item, -delta);
+    }
+
+    // ----------------------------------- Set -----------------------------------------------
+
+    /**
+     * 获取set所有值
+     * @param key 键
+     * @return java.util.Set<java.lang.Object> Set集合
+     */
+    public Set<Object> sGet(String key){
+        try {
+            return redisTemplate.opsForSet().members(key);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 从指定的set中查询值是否存在
+     * @param key 键
+     * @param value 值
+     * @return boolean 存在/不存在
+     */
+    public boolean sHasValue(String key, Object value){
+        try {
+            return redisTemplate.opsForSet().isMember(key, value);
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 将数据放入set缓存
+     * @param key 键
+     * @param values 值, 可以多个
+     * @return long 成功个数
+     */
+    public long sSet(String key, Object... values){
+        try {
+            return redisTemplate.opsForSet().add(key, values);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    /**
+     * 将数据放入set缓存, 并指定过期时间
+     * @param key 键
+     * @param time 时间(秒), time<=0 将设置无限期
+     * @param values 值, 可以多个
+     * @return long 成功个数
+     */
+    public long sSet(String key, long time, Object... values){
+        try {
+            long count = redisTemplate.opsForSet().add(key, values);
+            if(time > 0){
+                expire(key, time);
+            }
+            return count;
+        } catch (Exception e){
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    /**
+     * 获取set缓存长度
+     * @param key 键
+     * @return long set长度
+     */
+    public long sGetSetSize(String key){
+        try {
+            return redisTemplate.opsForSet().size(key);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    /**
+     * 移除指定set的中某些值
+     * @param key 键
+     * @param values 值, 可以多个
+     * @return long 移除的个数
+     */
+    public long setRemove(String key, Object... values){
+        try {
+            return redisTemplate.opsForSet().remove(key, values);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    // -------------------------------------------- List --------------------------------------
+
+    /**
+     * 获取list中的指定区间的值
+     * @param key 键
+     * @param start 开始
+     * @param end 结束  如果为-1 表示末尾
+     * @return java.util.List<java.lang.Object> 获取的值
+     */
+    public List<Object> lGet(String key, long start, long end) {
+        try {
+            return redisTemplate.opsForList().range(key, start, end);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * 获取指定list的长度
+     * @param key 键
+     * @return long list长度
+     */
+    public long lGetListSize(String key){
+        try {
+            return redisTemplate.opsForList().size(key);
+        }catch (Exception e){
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    /**
+     * 获取指定list中, 指定索引的值
+     * @param key 键
+     * @param index  索引 index>=0时, 0是第一位, index<0时, -1是末尾, -2倒数第二位
+     * @return java.lang.Object 值
+     */
+    public Object lGetIndex(String key, long index) {
+        try {
+            return redisTemplate.opsForList().index(key, index);
+        } catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 将值存入指定list末尾, 指定list不存在, 会创建
+     * @param key 键
+     * @param value 值
+     * @return boolean 成功/失败
+     */
+    public boolean lSet(String key, Object value){
+        try{
+            redisTemplate.opsForList().rightPush(key, value);
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 将值存入指定list末尾, 指定list不存在, 会创建, 并指定过期时间
+     * @param key 键
+     * @param value 值
+     * @param time 时间(秒), time<=0 将设置无限期
+     * @return boolean 成功/失败
+     */
+    public boolean lSet(String key, Object value, long time){
+        try{
+            redisTemplate.opsForList().rightPush(key, value);
+            if (time > 0) {
+                expire(key, time);
+            }
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 将list的全部值存入指定list末尾, 指定list不存在, 会创建
+     * @param key 键
+     * @param value 值
+     * @return boolean 成功或失败
+     */
+    public boolean lSet(String key, List<Object> value){
+        try{
+            redisTemplate.opsForList().rightPushAll(key, value);
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 将list的全部值存入指定list末尾, 指定list不存在, 会创建, 并指定过期时间
+     * @param key 键
+     * @param value 值
+     * @param time 时间(秒), time<=0 将设置无限期
+     * @return boolean 成功/失败
+     */
+    public boolean lSet(String key, List<Object> value, long time){
+        try{
+            redisTemplate.opsForList().rightPushAll(key, value);
+            if (time > 0) {
+                expire(key, time);
+            }
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 修改指定list, 指定索引的值
+     * @param key 键
+     * @param index 索引
+     * @param value 替换的值
+     * @return boolean 成功/失败
+     */
+    public boolean lUpdateIndex(String key, long index, Object value){
+        try {
+            redisTemplate.opsForList().set(key, index, value);
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 移除指定list中指定数量的目标值
+     * @param key 键
+     * @param count 要移除数量
+     * @param value 目标值
+     * @return long 成功移除的个数
+     */
+    public long lRemove(String key, long count, Object value){
+        try {
+            return redisTemplate.opsForList().remove(key, count, value);
+        } catch (Exception e){
+            e.printStackTrace();
+            return 0;
         }
     }
 }
+
 ```
 
 
