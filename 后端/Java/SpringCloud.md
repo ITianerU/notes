@@ -1,3 +1,10 @@
+# 学习网站
+
+- https://springcloud.cc/spring-cloud-netflix.html
+- 中文API   https://springcloud.cc/spring-cloud-dalston.html
+- 社区 http://springcloud.cn/
+- 中文网  http://springcloud.cc
+
 # 注册中心
 
 ## consul
@@ -15,7 +22,54 @@
 ./consul agent -dev
 ```
 
-# 生产者
+
+
+# 项目搭建
+
+## 父项目
+
+### 依赖
+
+```xml
+<packaging>pom</packaging>
+<properties>
+	<property></property>
+</properties>
+
+<dependencyManagement>
+    <dependencies>
+        <!-- springcloud -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-dependencies</artifactId>
+            <!-- 该版本号是单词首字母 A B C D 这样排列-->
+            <version>Greenwich.SR1</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+        <!-- springboot -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-dependencies</artifactId>
+            <version>2.1.4.RELEASE</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+        <!-- 数据库 -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.47</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+
+
+## 生产者
 
 ### 添加依赖
 
@@ -63,7 +117,7 @@ spring:
 @EnableDiscoveryClient
 ```
 
-# 消费者
+## 消费者
 
 ### 添加依赖
 
