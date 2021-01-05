@@ -28,16 +28,31 @@
 
 ## 父项目
 
-### 依赖
+### pom
 
 ```xml
+<groupId>com.itianeru</groupId>
+<artifactId>springcloud</artifactId>
+<version>1.0</version>
+<modules>
+	<module>springcloud-api</module>
+</modules>
 <packaging>pom</packaging>
 <properties>
-	<property></property>
+    <junit.version>4.12</junit.version>
+    <lombok.version>1.16.10</lombok.version>
+    <log4j.version>1.2.17</log4j.version>
+    <springcloud-api.version>1.0</springcloud-api.version>
 </properties>
 
 <dependencyManagement>
     <dependencies>
+        <!-- 实体类 -->
+        <dependency>
+            <groupId>com.itianeru</groupId>
+            <artifactId>springcloud-api</artifactId>
+            <springcloud-api.version>${springcloud-api.version}</springcloud-api.version>
+        </dependency>
         <!-- springcloud -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -60,11 +75,90 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.47</version>
-            <type>pom</type>
-            <scope>import</scope>
+        </dependency>
+        <!-- druid -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <version>1.1.10</version>
+        </dependency>
+        <!-- mybatis -->
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>1.3.2</version>
+        </dependency>
+        <!-- junit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+        </dependency>
+        <!-- lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+        </dependency>
+        <!-- log4j -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>${log4j.version}</version>
         </dependency>
     </dependencies>
 </dependencyManagement>
+```
+
+## API
+
+存放接口和实体类
+
+### pom
+
+```xml
+<parent>
+    <groupId>com.itianeru</groupId>
+    <artifactId>springcloud</artifactId>
+    <version>1.0</version>
+</parent>
+<modelVersion>4.0.0</modelVersion>
+<artifactId>springcloud-api</artifactId>
+
+<packaging>jar</packaging>
+
+<dependencies>
+    <!-- lombok -->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+    </dependency>
+</dependencies>
+
+```
+
+### api
+
+```java
+package com.itianeru.springcloud.api;
+    
+public interface 
+```
+
+### 实体
+
+```java
+package com.itianeru.springcloud.pojo;
+@Data
+@NoArgsConstructor
+@Accessors(chain = true)  // 支持链式写法
+public class User implements Serializable{
+    private static final long serialVersionUID = // 值使用idea生成;
+    
+    private int id;
+    private String username;
+    private String pwd;
+}
 ```
 
 
@@ -74,25 +168,28 @@
 ### 添加依赖
 
 ```xml
-<!--consul-->
-<dependency>
-    <groupId>org.springframework.cloud</groupId>
-    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-</dependency>	
+<parent>
+    <groupId>com.itianeru</groupId>
+    <artifactId>springcloud</artifactId>
+    <version>1.0</version>
+</parent>
+<modelVersion>4.0.0</modelVersion>
+<artifactId>springcloud-api</artifactId>
 
-<!--srping cloud-->
-<!--注: spring cloud的版本需要与spring boot对应-->
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dependencies</artifactId>
-            <version>Finchley.RELEASE</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
+<packaging>jar</packaging>
+
+<dependencies>
+    <!-- lombok -->
+    <dependency>
+        <groupId>com.itianeru</groupId>
+        <artifactId>springcloud-api</artifactId>
+    </dependency>
+    <!-- lombok -->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+    </dependency>
+</dependencies>
 ```
 
 ### 添加配置

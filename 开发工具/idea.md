@@ -56,12 +56,24 @@ Template text：
 
 点击Edit variables，  在params参数， 选择方法 methodParameters(), returns参数， 选择方法methodReturnType()
 
+### serialVersionUID自动生成设置
+
+- file -> settings -> Editor -> Inspections
+- 搜索框搜索 serialVersionUID
+- 勾选 Serializable class without SerialVersionUID 和 SerialVersionUID field not deciared 'private static final long'
+
 ### 快捷键
 
 #### 生成调用方法的返回值变量
 
 ```
 ctrl+alt+v
+```
+
+#### 生成serialVersionUID
+
+```
+选中类名 alt+enter
 ```
 
 
