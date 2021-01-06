@@ -39,6 +39,7 @@
 </modules>
 <packaging>pom</packaging>
 <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>4.12</junit.version>
     <lombok.version>1.16.10</lombok.version>
     <log4j.version>1.2.17</log4j.version>
