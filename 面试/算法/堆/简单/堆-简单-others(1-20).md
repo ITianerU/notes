@@ -6,7 +6,7 @@
 
 
 
-# 栈-简单(1-20)
+# 堆-简单-others(1-20)
 
 ## 1.[[剑指 Offer 40. 最小的k个数](https://leetcode-cn.com/problems/zui-xiao-de-kge-shu-lcof/)]
 

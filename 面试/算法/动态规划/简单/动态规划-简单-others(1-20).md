@@ -1,4 +1,4 @@
-题目来源**
+**题目来源**
 
 [力扣（LeetCode）](https://leetcode-cn.com/)
 
@@ -6,7 +6,7 @@
 
 
 
-# 数组-简单(1-20)
+# 动态规划-简单-others(1-20)
 
 ## 1.[[剑指 Offer 42. 连续子数组的最大和](https://leetcode-cn.com/problems/lian-xu-zi-shu-zu-de-zui-da-he-lcof/)]
 

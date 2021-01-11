@@ -1,4 +1,4 @@
-题目来源**
+**题目来源**
 
 [力扣（LeetCode）](https://leetcode-cn.com/)
 
@@ -6,7 +6,7 @@
 
 
 
-# 数组-简单(1-20)
+# 数组-简单-others(1-20)
 
 ## 1.[[剑指 Offer 03. 数组中重复的数字](https://leetcode-cn.com/problems/shu-zu-zhong-zhong-fu-de-shu-zi-lcof/)]
 
