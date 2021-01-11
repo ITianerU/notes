@@ -5,25 +5,6 @@
 - 社区 http://springcloud.cn/
 - 中文网  http://springcloud.cc
 
-# 注册中心
-
-## consul
-
-### 安装
-
-```
-从官网https://www.consul.io/下载后, 解压即可
-```
-
-### 启动
-
-```
-# 开发模式启动
-./consul agent -dev
-```
-
-
-
 # 项目搭建
 
 ## 父项目
@@ -43,7 +24,13 @@
     <junit.version>4.12</junit.version>
     <lombok.version>1.16.10</lombok.version>
     <log4j.version>1.2.17</log4j.version>
+    <eureka.version>1.4.6.RELEASE</eureak.version
+    <springcloud.version>Greenwich.SR1</springcloud.version>
+    <springboot.version>2.1.4.RELEASE</springboot.version>
     <springcloud-api.version>1.0</springcloud-api.version>
+    <mysql.version>5.1.47</mysql.version>
+    <druid.version>1.1.10</druid.version>
+    <mybatis.version>1.3.2</mybatis.version>
 </properties>
 
 <dependencyManagement>
@@ -54,12 +41,24 @@
             <artifactId>springcloud-api</artifactId>
             <springcloud-api.version>${springcloud-api.version}</springcloud-api.version>
         </dependency>
+        <!-- eureka 注册中心 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka-server</artifactId>
+            <version>${eureka.version}</version>
+        </dependency>
+        <!-- eureka 客户端 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka</artifactId>
+            <version>${eureka.version}</version>
+        </dependency>
         <!-- springcloud -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-dependencies</artifactId>
             <!-- 该版本号是单词首字母 A B C D 这样排列-->
-            <version>Greenwich.SR1</version>
+            <version>${springcloud.version}</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -67,7 +66,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-dependencies</artifactId>
-            <version>2.1.4.RELEASE</version>
+            <version>${springboot.version}</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -75,19 +74,19 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.47</version>
+            <version>${mysql.version}</version>
         </dependency>
         <!-- druid -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid</artifactId>
-            <version>1.1.10</version>
+            <version>${druid.version}</version>
         </dependency>
         <!-- mybatis -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>1.3.2</version>
+            <version>${mybatis.version}</version>
         </dependency>
         <!-- junit -->
         <dependency>
@@ -109,6 +108,58 @@
         </dependency>
     </dependencies>
 </dependencyManagement>
+```
+
+## 注册中心
+
+### Eureka
+
+#### 依赖
+
+```xml
+<parent>
+    <groupId>com.itianeru</groupId>
+    <artifactId>springcloud</artifactId>
+    <version>1.0</version>
+</parent>
+<modelVersion>4.0.0</modelVersion>
+<artifactId>springcloud-eureka</artifactId>
+
+<packaging>jar</packaging>
+
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-erueka-server</artifactId>
+    </dependency>
+    <!-- 热部署工具 -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-devtools</artifactId>
+    </dependency>
+</dependencies>
+```
+
+#### 配置
+
+```yml
+server:
+	port: 7001
+
+eureka:
+	instance:
+		hostname: localhost  # eureka 服务端实例名称
+	client:
+		register-with-erueka: false  # 表示是否向eureka注册自己 集群配置使用
+		fetch-registtry: false # 如果为false 则表示自己为注册中心
+		service-url: 
+			defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/   # 注册中心地址
+```
+
+#### 启动类注解
+
+```java
+@EnableEurekaServer
 ```
 
 ## API
@@ -175,20 +226,64 @@ public class User implements Serializable{
     <version>1.0</version>
 </parent>
 <modelVersion>4.0.0</modelVersion>
-<artifactId>springcloud-api</artifactId>
+<artifactId>springcloud-provider</artifactId>
 
 <packaging>jar</packaging>
 
 <dependencies>
-    <!-- lombok -->
+    <!-- 实体类 -->
     <dependency>
         <groupId>com.itianeru</groupId>
         <artifactId>springcloud-api</artifactId>
     </dependency>
-    <!-- lombok -->
+    <!-- junit -->
     <dependency>
-        <groupId>org.projectlombok</groupId>
-        <artifactId>lombok</artifactId>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+    </dependency>
+    <!-- 数据库 -->
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+    </dependency>
+    <!-- druid -->
+    <dependency>
+        <groupId>com.alibaba</groupId>
+        <artifactId>druid</artifactId>
+    </dependency>
+    <!-- springcloud -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <!-- 该版本号是单词首字母 A B C D 这样排列-->
+        <version>Greenwich.SR1</version>
+        <type>pom</type>
+        <scope>import</scope>
+    </dependency>
+    <!-- springboot-web -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <!-- springboot-jetty-->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-jetty</artifactId>
+    </dependency>
+    <!-- mybatis -->
+    <dependency>
+        <groupId>org.mybatis.spring.boot</groupId>
+        <artifactId>mybatis-spring-boot-starter</artifactId>
+    </dependency>
+    <!-- log4j -->
+    <dependency>
+        <groupId>log4j</groupId>
+        <artifactId>log4j</artifactId>
+    </dependency>
+    <!-- 热部署工具 -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-devtools</artifactId>
     </dependency>
 </dependencies>
 ```
@@ -196,23 +291,51 @@ public class User implements Serializable{
 ### 添加配置
 
 ```yml
+server:
+	port: 8001
 spring:
-  application:
-    name:  # 服务名
-  cloud:
-  	# 注册到注册中心
-    consul:
-      host: localhost
-      port: 8500
-      discovery:
-        service-name: ${spring.application.name}
+	application:
+    	name:  # 服务名
+  	datasource:
+  		type: com.alibaba.druid.pool.DruidDataSource  # 数据库连接池
+  		driver-class-name: com.mysql.jdbc.Driver
+  		url: jdbc:mysql://ip:3306/databaseName?useSSL=true&useUnicode=true&characterEncodingUTF-8
+  		username: root
+  		password: 123456
+
+# eureka配置
+eureka:
+	client:
+		service-url: 
+			defaultZone: http://localhost:7001/eureka/   # 注册中心地址
+	instance:
+		instance-id: # 服务名 会显示在eureka的监控页上
+mybatis:
+	type-aliases-packate: # pojo包路径
+	config-location: classpath:mybatis-config.xml  # 详情看mybatis笔记(可选)
+	mapper-location: classpath:mapper/*.xml
 ```
 
 ### 添加注解
 
 ```java
-在启动类添加注解
-@EnableDiscoveryClient
+// 在启动类添加注解
+@EnableEurekaClient
+```
+
+### 使用
+
+```java
+@RestController
+public class UserController{
+    @Autowired
+    private UserSerivce userService;
+    
+    @PostMapping("/user")
+    public boolean addUser(User user){
+        return userService.add(user);
+    }
+}
 ```
 
 ## 消费者
@@ -220,30 +343,54 @@ spring:
 ### 添加依赖
 
 ```xml
-<!--consul-->
-<dependency>
-    <groupId>org.springframework.cloud</groupId>
-    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-</dependency>	
+<parent>
+    <groupId>com.itianeru</groupId>
+    <artifactId>springcloud</artifactId>
+    <version>1.0</version>
+</parent>
+<modelVersion>4.0.0</modelVersion>
+<artifactId>springcloud-provider</artifactId>
 
-<!--srping cloud-->
-<!--注: spring cloud的版本需要与spring boot对应-->
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dependencies</artifactId>
-            <version>Finchley.RELEASE</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
+<packaging>jar</packaging>
+
+<dependencies>
+    <!-- 实体类 -->
+    <dependency>
+        <groupId>com.itianeru</groupId>
+        <artifactId>springcloud-api</artifactId>
+    </dependency>
+    <!-- junit -->
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+    </dependency>
+    <!-- springcloud -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <!-- 该版本号是单词首字母 A B C D 这样排列-->
+        <version>Greenwich.SR1</version>
+        <type>pom</type>
+        <scope>import</scope>
+    </dependency>
+    <!-- springboot-web -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <!-- 热部署工具 -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-devtools</artifactId>
+    </dependency>
+</dependencies>
 ```
 
 ### 添加配置
 
 ```yml
+server:
+	port: 8011
 spring:
   application:
     name:  # 服务名
@@ -254,6 +401,18 @@ spring:
       port: 8500
       discovery:
         service-name: ${spring.application.name}
+```
+
+### 配置类
+
+```java
+@Configuration
+public class ConfigBean{
+    @Bean
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
 ```
 
 ### 添加注解
@@ -266,7 +425,10 @@ spring:
 ### 调用服务
 
 ```java
-new RestTemplate().getForObject("请求的接口路径", String.class); // 第二个参数为返回值类型
+@Autowired
+private RestTemplate restTemplate;
+
+restTemplate.getForObject("请求的接口路径", String.class); // 第二个参数为返回值类型
 ```
 
 ### 负责均衡
