@@ -112,6 +112,22 @@
 
 ## 注册中心
 
+### 对比
+
+**CAP原则:**  C 一致性,  A 可用性, P 容错性, 在分布式系统中, P容错性是不可或缺的, 因此只能在A和C中权衡
+
+- **Zookeeper:**  保证了CP
+
+  当向注册中心查询接口服务, 我们可以容忍注册中心返回的是几分钟之前的注册信息, 但不能接受服务直接宕掉不可用, 就是降低A可用性, 提高C一致性,  但是zk的master节点如果宕掉, 其他节点会重新选举leader, 但是选举的时间过长, 30-120s(**不一定是真的, 没查到**), 选举期间, 整个zk集群都是不可用的, 导致注册服务瘫痪, 这是不能容忍的 
+
+- **Eureka:**  保证了AP
+
+  Eureka优先保证可用性, A大于C, 各个节点都是平等的, 单个节点挂掉, 不影响其他节点,  服务注册时, 如果发现连接失败, 会切换节点进行注册, 只要有一台Eureka服务可用, 就能保证可用性, 但是查到的信息可能不是最新的, 一致性差, 另外Eureka有自我保护机制, 如果15分钟内超过85%的节点没有正常的心跳, 那么Eureka会认为网络出现故障, 会出现这几种状况
+
+  - Eureka不再从注册列表中移除长时间没有心跳的服务
+  - Eureka仍然能够接受新的服务注册和查询, 但是不会同步到其他节点
+  - 当网络稳定时, 再将信息同步
+
 ### Eureka
 
 #### 依赖
@@ -154,6 +170,8 @@ eureka:
 		fetch-registtry: false # 如果为false 则表示自己为注册中心
 		service-url: 
 			defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/   # 注册中心地址
+	server:
+		enable-preservation: false # 关闭自我保护模式
 ```
 
 #### 启动类注解
@@ -161,6 +179,27 @@ eureka:
 ```java
 @EnableEurekaServer
 ```
+
+#### 集群搭建
+
+##### 配置
+
+```yml
+server:
+	port: 7001
+
+eureka:
+	instance:
+		hostname: localhost  # eureka 服务端实例名称
+	client:
+		register-with-erueka: false  # 表示是否向eureka注册自己 集群配置使用
+		fetch-registtry: false # 如果为false 则表示自己为注册中心
+		service-url: 
+			defaultZone: http://${eureka.instance.hostname}:7002/eureka/, http://${eureka.instance.hostname}:7003/eureka/ # 绑定其他集群注册中心的地址
+	
+```
+
+
 
 ## API
 
@@ -254,11 +293,12 @@ public class User implements Serializable{
     <!-- springcloud -->
     <dependency>
         <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-dependencies</artifactId>
-        <!-- 该版本号是单词首字母 A B C D 这样排列-->
-        <version>Greenwich.SR1</version>
-        <type>pom</type>
-        <scope>import</scope>
+        <artifactId>spring-cloud-starter-eureka</artifactId>
+    </dependency>
+    <!-- eureka服务监控详情页 -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
     <!-- springboot-web -->
     <dependency>
@@ -310,6 +350,11 @@ eureka:
 			defaultZone: http://localhost:7001/eureka/   # 注册中心地址
 	instance:
 		instance-id: # 服务名 会显示在eureka的监控页上
+# 配置eureka 服务监控详情一json格式返回, 需要导入jar包		
+info:
+	app.name: itianeru-userservice  # 服务名
+	company.name: alibaba   # 公司名
+
 mybatis:
 	type-aliases-packate: # pojo包路径
 	config-location: classpath:mybatis-config.xml  # 详情看mybatis笔记(可选)
@@ -331,9 +376,23 @@ public class UserController{
     @Autowired
     private UserSerivce userService;
     
+    // 获取微服务的信息
+    @Autowired
+    private DiscoveryClient client;
+    
     @PostMapping("/user")
     public boolean addUser(User user){
         return userService.add(user);
+    }
+    
+    // 使用需要在启动类加注解  @EnableDiscoveryClient
+    @GetMapping("/user/discovery")
+    public Object discovery(){
+        // 获取微服务列表清单
+        List<String> services = client.getServices();
+        // 得到具体的微服务
+        List<ServiceInstance> instances = client.getInstance("微服务id, 在监控页面上看");
+        return this.client;
     }
 }
 ```
@@ -367,11 +426,12 @@ public class UserController{
     <!-- springcloud -->
     <dependency>
         <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-dependencies</artifactId>
-        <!-- 该版本号是单词首字母 A B C D 这样排列-->
-        <version>Greenwich.SR1</version>
-        <type>pom</type>
-        <scope>import</scope>
+        <artifactId>spring-cloud-starter-eureka</artifactId>
+    </dependency>
+    <!-- eureka服务监控详情页 -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
     <!-- springboot-web -->
     <dependency>
