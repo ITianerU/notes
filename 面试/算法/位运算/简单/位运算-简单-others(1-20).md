@@ -157,3 +157,166 @@ class Solution {
 }
 ```
 
+## 4.[[面试题 05.03. 翻转数位](https://leetcode-cn.com/problems/reverse-bits-lcci/)]
+
+**描述**
+
+给定一个32位整数 `num`，你可以将一个数位从0变为1。请编写一个程序，找出你能够获得的最长的一串1的长度。
+
+**示例**
+
+**示例 1：**
+
+```
+输入: num = 1775(110111011112)
+输出: 8
+```
+
+**示例 2：**
+
+```
+输入: num = 7(01112)
+输出: 4
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int reverseBits(int num) {
+        // 转换为2进制数组
+        int[] num_2 = new int[32];
+        for(int i=0; i<32; i++){
+            num_2[i] = 1 & (num >> i);
+        }
+        // 记录最终长度
+        int count = 0;
+        // 0前面的长度
+        int pre = 0;
+        // 0后面的长度
+        int after = 0;
+        // 是否遇到0
+        boolean flag = false;
+        // 遍历
+        for(int i=0; i<32; i++){
+            // 如果等于1
+            if(num_2[i] == 1){
+                // 并且没有遇到0, 0前面的长度+1
+                if(!flag){
+                    pre++;
+                // 遇到了0, 0后面的长度+1
+                }else{
+                    after++;
+                }
+            // 如果等于0
+            }else{
+                // 之前没有遇到0
+                if(!flag){
+                    flag = true;
+                // 之前遇到过0
+                }else{
+                    // 计算当前一共多少1
+                    count = Math.max(count, pre + 1 + after);
+                    // 0前面的长度 = 后面的
+                    pre = after;
+                    // 后面的变成0
+                    after = 0;
+                }
+            }
+        }
+        // 最后再判断一边
+        if(flag){
+            count = Math.max(count, pre + 1 + after);
+        }else{
+            count = Math.max(count, pre + after);
+        }
+        return count;
+    }
+}
+```
+
+## 5.[[面试题 05.06. 整数转换](https://leetcode-cn.com/problems/convert-integer-lcci/)]
+
+**描述**
+
+整数转换。编写一个函数，确定需要改变几个位才能将整数A转成整数B。
+
+**示例**
+
+**示例 1：**
+
+```
+输入：A = 29 （或者0b11101）, B = 15（或者0b01111）
+输出：2
+```
+
+**示例 2：**
+
+```
+输入：A = 1，B = 2
+输出：2
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int convertInteger(int A, int B) {
+        int count = 0;
+        for(int i=0; i<32; i++){
+            if((1 & (A >> i)) != (1 & (B >> i))){
+                count++;
+            }
+        }
+        return count;
+    }
+}
+```
+
+## 6.[[面试题 05.07. 配对交换](https://leetcode-cn.com/problems/exchange-lcci/)]
+
+**描述**
+
+配对交换。编写程序，交换某个整数的奇数位和偶数位，尽量使用较少的指令（也就是说，位0与位1交换，位2与位3交换，以此类推）。
+
+**示例**
+
+**示例 1：**
+
+```
+输入：num = 2（或者0b10）
+输出 1 (或者 0b01)
+```
+
+**示例 2：**
+
+```
+输入：num = 3
+输出：3
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int exchangeBits(int num) {
+        // 提取出2进制奇数位的数字
+        int odd = num & 0x55555555;
+        // 提取出2进制偶数位的数字
+        int even = num & 0xaaaaaaaa;
+        // 奇数左移
+        odd <<= 1;
+        // 偶数右移
+        even >>= 1;
+        // 最后或运算, 组合成一个数
+        return odd | even;
+    }
+}
+```
+
