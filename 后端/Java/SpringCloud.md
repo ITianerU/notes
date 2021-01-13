@@ -24,7 +24,8 @@
     <junit.version>4.12</junit.version>
     <lombok.version>1.16.10</lombok.version>
     <log4j.version>1.2.17</log4j.version>
-    <eureka.version>1.4.6.RELEASE</eureak.version
+    <eureka.version>1.4.6.RELEASE</eureak.version>
+    <ribbon.version>1.4.6.RELEASE</ribbon.version>
     <springcloud.version>Greenwich.SR1</springcloud.version>
     <springboot.version>2.1.4.RELEASE</springboot.version>
     <springcloud-api.version>1.0</springcloud-api.version>
@@ -61,6 +62,12 @@
             <version>${springcloud.version}</version>
             <type>pom</type>
             <scope>import</scope>
+        </dependency>
+        <!-- ribbon负载均衡 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-ribbon</artifactId>
+            <version>${ribbon.version}</version>
         </dependency>
         <!-- springboot -->
         <dependency>
@@ -418,20 +425,15 @@ public class UserController{
         <groupId>com.itianeru</groupId>
         <artifactId>springcloud-api</artifactId>
     </dependency>
-    <!-- junit -->
-    <dependency>
-        <groupId>junit</groupId>
-        <artifactId>junit</artifactId>
-    </dependency>
     <!-- springcloud -->
     <dependency>
         <groupId>org.springframework.cloud</groupId>
         <artifactId>spring-cloud-starter-eureka</artifactId>
     </dependency>
-    <!-- eureka服务监控详情页 -->
+    <!-- ribbon -->
     <dependency>
         <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-boot-starter-actuator</artifactId>
+        <artifactId>spring-cloud-starter-ribbon</artifactId>
     </dependency>
     <!-- springboot-web -->
     <dependency>
@@ -451,16 +453,14 @@ public class UserController{
 ```yml
 server:
 	port: 8011
-spring:
-  application:
-    name:  # 服务名
-  cloud:
-  	# 注册到注册中心
-    consul:
-      host: localhost
-      port: 8500
-      discovery:
-        service-name: ${spring.application.name}
+
+# eureka配置
+eureka:
+	client:
+		register-with-erueka: false # 不向注册中心注册
+		service-url: 
+			defaultZone: http://localhost:7001/eureka/,http://localhost:7002/eureka/,http://localhost:7003/eureka/  # 注册中心地址
+  	
 ```
 
 ### 配置类
@@ -479,7 +479,7 @@ public class ConfigBean{
 
 ```java
 // 在启动类添加注解
-@EnableDiscoveryClient
+@EnableEurekaClient
 ```
 
 ### 调用服务
@@ -511,7 +511,7 @@ ServiceInstance serviceInstance = loadBalancerClient.choose("mango-producer");
 // 获取服务地址
 serviceInstance.getUri();
 // 获取服务名
-serviceInstance.getServiceId();
+serviceInstance.getServi ceId();
 // 调用服务时, 可动态获取服务地址与接口拼接, 实现负载均衡
 new RestTemplate().getForObject(serviceInstance.getUri().toString() + "/hello", String.class);
 ```
@@ -520,13 +520,16 @@ new RestTemplate().getForObject(serviceInstance.getUri().toString() + "/hello", 
 
 默认使用轮询
 
-##### 在启动类添加
+##### 添加配置类
 
 ```java
-@Bean
-@LoadBalanced // 该注解实现负载均衡
-public RestTemplate restTemplate(){
-	return  new RestTemplate()
+@Configuration
+public class ConfigBean{
+    @Bean
+    @LoadBalanced // 该注解实现负载均衡
+    public RestTemplate restTemplate(){
+        return  new RestTemplate()
+    }
 }
 ```
 
@@ -541,15 +544,15 @@ private RestTemplate restTemplate;
 ```java
 // restTemplate会自动实现负载均衡
 // 接口路径为: 服务名 + 接口
-restTemplate.getForObject("http://mango-producer/hello", String.class);
+restTemplate.getForObject("http://服务名/接口名", String.class);
 ```
 
 ##### 负载均衡策略
 
 ```yml
 # 在消费者的配置文件中添加
-# mango-producer 为生产者的服务名
-mango-producer:
+# 生产者的服务名
+生产者服务名   :
   ribbon:
     NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule # 配置负载均衡粗略
 ```
