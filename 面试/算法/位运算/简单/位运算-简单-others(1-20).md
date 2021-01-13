@@ -320,3 +320,208 @@ class Solution {
 }
 ```
 
+## 7.[[面试题 16.07. 最大数值](https://leetcode-cn.com/problems/maximum-lcci/)]
+
+**描述**
+
+编写一个方法，找出两个数字`a`和`b`中最大的那一个。不得使用if-else或其他比较运算符。
+
+**示例**
+
+**示例 1：**
+
+```
+输入： a = 1, b = 2
+输出： 2
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int maximum(int a, int b) {
+        // 先求差, 如果为负数b大, 正数a大
+        long x = (long)a - (long)b;
+        // 求出符号位1为负, 0为正数
+        int flag = (int) (1 & (x >> 63));
+        // 返回较大的数
+        return (1 - flag) * a + flag * b;
+    }
+}
+```
+
+## 8.[[面试题 17.01. 不用加号的加法](https://leetcode-cn.com/problems/add-without-plus-lcci/)]
+
+**描述**
+
+设计一个函数把两个数字相加。不得使用 + 或者其他算术运算符。
+
+**示例**
+
+**示例 1：**
+
+```
+输入: a = 1, b = 1
+输出: 2
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int add(int a, int b) {
+        while(b != 0){
+            int t = a ^ b;
+            b = (a & b) << 1;
+            a = t;
+        }
+        return a;
+    }
+}
+```
+
+## 9.[[面试题 17.04. 消失的数字](https://leetcode-cn.com/problems/missing-number-lcci/)]
+
+**描述**
+
+数组`nums`包含从`0`到`n`的所有整数，但其中缺了一个。请编写代码找出那个缺失的整数。你有办法在O(n)时间内完成吗？
+
+**注意：**本题相对书上原题稍作改动
+
+**示例**
+
+**示例 1：**
+
+```
+输入：[3,0,1]
+输出：2
+```
+
+**示例 2：**
+
+```
+输入：[9,6,4,2,3,5,7,0,1]
+输出：8
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int missingNumber(int[] nums) {
+        int n = nums.length;
+        for(int i=0; i<nums.length; i++){
+            n ^= i ^ nums[i];
+        }
+        return n;
+    }
+}
+```
+
+## 10.[[面试题 17.04. 消失的数字](https://leetcode-cn.com/problems/missing-number-lcci/)]
+
+**描述**
+
+数组`nums`包含从`0`到`n`的所有整数，但其中缺了一个。请编写代码找出那个缺失的整数。你有办法在O(n)时间内完成吗？
+
+**注意：**本题相对书上原题稍作改动
+
+**示例**
+
+**示例 1：**
+
+```
+输入：[3,0,1]
+输出：2
+```
+
+**示例 2：**
+
+```
+输入：[9,6,4,2,3,5,7,0,1]
+输出：8
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int missingNumber(int[] nums) {
+        int n = nums.length;
+        for(int i=0; i<nums.length; i++){
+            n ^= i ^ nums[i];
+        }
+        return n;
+    }
+}
+```
+
+## 11.[[面试题 17.10. 主要元素](https://leetcode-cn.com/problems/find-majority-element-lcci/)]
+
+**描述**
+
+数组中占比超过一半的元素称之为主要元素。给定一个**整数**数组，找到它的主要元素。若没有，返回-1。
+
+**示例**
+
+**示例 1：**
+
+```
+输入：[1,2,5,9,5,9,5,5,5]
+输出：5
+```
+
+**示例 2：**
+
+```
+输入：[3,2]
+输出：-1
+```
+
+**示例 3：**
+
+```
+输入：[2,2,1,1,1,2,2]
+输出：2
+```
+
+**题解**
+
+**Java**
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        int t = nums[0];
+        int count = 1;
+        // 先用摩尔投票法, 求出众数
+        for(int i=1; i<nums.length; i++){
+            if(t == nums[i]){
+                count++;
+            }else{
+                count--;
+                if(count == 0){
+                    t = nums[i];
+                    count++;
+                }
+            }
+        }
+        // 判断该数的数量, 是否超过一半
+        count = nums.length / 2;
+        for(int num : nums){
+            if(num == t) count--;
+            if(count == -1) return t;
+        }
+        return -1;
+    }
+}
+```
+
