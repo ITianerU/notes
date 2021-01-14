@@ -24,9 +24,8 @@
     <junit.version>4.12</junit.version>
     <lombok.version>1.16.10</lombok.version>
     <log4j.version>1.2.17</log4j.version>
-    <eureka.version>1.4.6.RELEASE</eureak.version>
-    <ribbon.version>1.4.6.RELEASE</ribbon.version>
     <springcloud.version>Greenwich.SR1</springcloud.version>
+    <springcloud.component.version>1.4.6.RELEASE</springcloud.component.version>
     <springboot.version>2.1.4.RELEASE</springboot.version>
     <springcloud-api.version>1.0</springcloud-api.version>
     <mysql.version>5.1.47</mysql.version>
@@ -46,13 +45,13 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-eureka-server</artifactId>
-            <version>${eureka.version}</version>
+            <version>${springcloud.component.version}</version>
         </dependency>
         <!-- eureka 客户端 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-eureka</artifactId>
-            <version>${eureka.version}</version>
+            <version>${springcloud.component.version}</version>
         </dependency>
         <!-- springcloud -->
         <dependency>
@@ -67,7 +66,13 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-ribbon</artifactId>
-            <version>${ribbon.version}</version>
+            <version>${springcloud.component.version}</version>
+        </dependency>
+        <!-- feign -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-feign</artifactId>
+            <version>${springcloud.component.version}</version>
         </dependency>
         <!-- springboot -->
         <dependency>
@@ -230,6 +235,11 @@ eureka:
     <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>
+    </dependency>
+    <!--fegin-->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-feign</artifactId>
     </dependency>
 </dependencies>
 
@@ -472,6 +482,12 @@ public class ConfigBean{
     public RestTemplate getRestTemplate(){
         return new RestTemplate();
     }
+    
+    // 修改负载均衡策略
+    @Bean
+    public IRule ribbonRule() {
+        return new RandomRule();//这里配置策略，和配置文件对应
+    }
 }
 ```
 
@@ -549,12 +565,14 @@ restTemplate.getForObject("http://服务名/接口名", String.class);
 
 ##### 负载均衡策略
 
+###### 配置文件
+
 ```yml
 # 在消费者的配置文件中添加
 # 生产者的服务名
-生产者服务名   :
+生产者服务名:
   ribbon:
-    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule # 配置负载均衡粗略
+    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule # 配置负载均衡粗略. 需要与java配置中对应
 ```
 
 | 策略类                    | 命名             | 说明                                                         |
@@ -569,30 +587,33 @@ restTemplate.getForObject("http://服务名/接口名", String.class);
 
 # 服务消费(Fegin)
 
+
+
 ### 添加依赖
 
 ```xml
-<!--fegin-->
+<!--fegin   还有一种 openfegin可学习-->
 <dependency>
     <groupId>org.springframework.cloud</groupId>
-    <artifactId>spring-cloud-starter-openfeign</artifactId>
+    <artifactId>spring-cloud-starter-feign</artifactId>
 </dependency>
 ```
 
 ### 添加注解
 
 ```java
-// 在启动类添加注解
-@EnableFeignClients
+// 在启动类添加注解, 扫描接口
+@EnableFeignClients(basePackages = {"com.itianeru.xxx"})
 ```
 
 ### 使用
 
 ```java
+// 写在api包中
 // 创建调用服务的接口
 // @FeignClient指定服务名
-@FeignClient(name = "mango-producer")
-public interface MangoProducerService {
+@FeignClient(name = "服务名")
+public interface ProducerService {
 	// 指定接口名
     @RequestMapping("/hello")
     public String hello();
@@ -602,12 +623,12 @@ public interface MangoProducerService {
 ```java
 // 注入创建的接口
 @Autowired
-private MangoProducerService mangoProducerService;
+private ProducerService producerService;
 
 @RequestMapping("/fegin/call")
 public String call(){
-    // 直接调用接口的方法, 即可调用远程服务的接口
-    return mangoProducerService.hello();
+    // 直接调用接口的方法, 即可调用远程服务的接 口
+    return producerService.hello();
 }
 
 ```
