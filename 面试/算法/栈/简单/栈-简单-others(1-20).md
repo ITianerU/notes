@@ -6,7 +6,7 @@
 
 
 
-# 字符串-简单-others(1-20)
+# 栈-简单-others(1-20)
 
 ## 1.[[剑指 Offer 09. 用两个栈实现队列](https://leetcode-cn.com/problems/yong-liang-ge-zhan-shi-xian-dui-lie-lcof/)]
 
