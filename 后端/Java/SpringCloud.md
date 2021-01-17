@@ -74,6 +74,12 @@
             <artifactId>spring-cloud-starter-feign</artifactId>
             <version>${springcloud.component.version}</version>
         </dependency>
+        <!-- feign的依赖中包含Hystrix, 如果不使用feign需要再单独引入 -->
+        <!-- <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-hystrix</artifactId>
+            <version>${springcloud.component.version}</version>
+        </dependency> -->
         <!-- springboot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -367,6 +373,7 @@ eureka:
 			defaultZone: http://localhost:7001/eureka/   # 注册中心地址
 	instance:
 		instance-id: # 服务名 会显示在eureka的监控页上
+		prefer-ip-address: true # 鼠标放到服务名上, 左下角能显示出该服务的真实ip
 # 配置eureka 服务监控详情一json格式返回, 需要导入jar包		
 info:
 	app.name: itianeru-userservice  # 服务名
@@ -635,9 +642,19 @@ public String call(){
 
 # 熔断器(Hystrix)
 
-Fegin的依赖中包含了Hystrix, 不需要额外引用依赖
+
 
 熔断器会在多节点服务中, 某个节点挂掉, 在调用这个挂掉的节点时, 熔断器会调用指定的回调类去处理, 避免多次调用,造成服务器阻塞
+
+### 添加依赖
+
+```xml
+<!-- Fegin的依赖中包含了Hystrix, 如果不使用Fegin, 需要单独引入Hystrix-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-hystrix</artifactId>
+</dependency>
+```
 
 ### 添加配置
 
@@ -648,7 +665,15 @@ feign:
     enabled: true
 ```
 
-### 创建回调类
+或者使用注解
+
+```java
+@EnableCircuitBreaker
+```
+
+### 类实现熔断
+
+#### 创建回调类
 
 ```java
 // 实现被调用的服务接口
@@ -662,7 +687,7 @@ public class MangoProducerHystrix implements MangoProducerService {
 }
 ```
 
-### 配置回调类
+#### 配置回调类
 
 ```java
 // 在fallback中指定回调类
@@ -673,6 +698,25 @@ public interface MangoProducerService {
     public String hello();
 }
 ```
+
+### 方法实现熔断
+
+```java
+public class xxxController{
+    @HystrixCommand(fallbackMethod = "hget")
+	@GetMapping("/user")
+    public User get(Long id){
+        return xxx;
+    }
+    
+    // 熔断时触发的方法
+    public User hget(Long id){
+        return "备选";
+    }
+}
+```
+
+
 
 # 仪表盘(Hystrix-dashboard)
 
