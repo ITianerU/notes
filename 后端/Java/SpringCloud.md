@@ -80,6 +80,12 @@
             <artifactId>spring-cloud-starter-hystrix</artifactId>
             <version>${springcloud.component.version}</version>
         </dependency> -->
+        <!-- 仪表盘 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-hystrix-dashboard</artifactId>
+            <version>${springcloud.component.version}</version>  
+        </dependency>
         <!-- springboot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -642,8 +648,6 @@ public String call(){
 
 # 熔断器(Hystrix)
 
-
-
 熔断器会在多节点服务中, 某个节点挂掉, 在调用这个挂掉的节点时, 熔断器会调用指定的回调类去处理, 避免多次调用,造成服务器阻塞
 
 ### 添加依赖
@@ -659,7 +663,7 @@ public String call(){
 ### 添加配置
 
 ```yml
-# 开启熔断器
+# 开启熔断器和服务降级, 需要引入feign
 feign:
   hystrix:
     enabled: true
@@ -668,6 +672,7 @@ feign:
 或者使用注解
 
 ```java
+// 只能开启熔断器, 不需要引入feign
 @EnableCircuitBreaker
 ```
 
@@ -711,12 +716,46 @@ public class xxxController{
     
     // 熔断时触发的方法
     public User hget(Long id){
-        return "备选";
+        return new User().setUserName("服务暂时无响应").age("1");
     }
 }
 ```
 
+### 服务降级
 
+服务器高负载的时候, 运维主动关闭一些访问量少的服务, 提高服务器承载能力, 程序返回降级后的结果
+
+```java
+@Component
+public class UserClientServiceFallbackFactory implements FallbackFactory{
+    // UserService是service层的接口
+    @Override 
+    public UserService create(Throwable throwable){
+        return new UserService() {
+            @Override
+            public User getUser(Long id){
+                return new User().setUserName("服务暂时无响应").age("1");
+            }
+        };
+    }
+}
+```
+
+#### 配置回调工厂
+
+```java
+// 在fallback中指定回调类
+@FeignClient(name = "服务名", fallbackFactory = UserClientServiceFallbackFactory.class)
+public interface UserService {
+    @RequestMapping("/user")
+    public User getUser(Long id);
+}
+```
+
+### 服务熔断和服务降级的区别
+
+- 服务熔断是处理意料之外的情况, 为程序加的一层保险, 是在生产者中编写
+- 服务降级是人主动关闭了某些生产者服务, 在消费者服务中编写的返回在生产者停止的时候的默认结果
 
 # 仪表盘(Hystrix-dashboard)
 
@@ -725,52 +764,18 @@ public class xxxController{
 ### 添加依赖
 
 ```xml
-<dependencies>
-    <!-- consul -->
-    <dependency>
-        <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-    </dependency>
-    <!-- 监控客户端 -->
-    <dependency>
-        <groupId>de.codecentric</groupId>
-        <artifactId>spring-boot-admin-starter-client</artifactId>
-        <version>2.0.4</version>
-    </dependency>
-    <!-- actuator-->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-actuator</artifactId>
-        <version>2.0.4.RELEASE</version>
-    </dependency>
-    <!-- 仪表盘-->
-    <dependency>
-        <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
-        <version>2.0.4.RELEASE</version>    
-    </dependency>
-</dependencies>
-
-<!--srping cloud-->
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dependencies</artifactId>
-            <version>Finchley.RELEASE</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
+<!-- 仪表盘-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-hystrix-dashboard</artifactId>
+</dependency>
 ```
 
 ### 添加注解
 
 ```java
 // 在启动类添加注解
-@EnableHystrixDashboard  // 启动仪表盘
-@EnableDiscoveryClient
+@EnableHystrixDashboard
 ```
 
 ### 添加配置
@@ -778,35 +783,24 @@ public class xxxController{
 ```yml
 server:
   port: 8501
-spring:
-  application:
-    name: mango-hystrix
-  cloud:
-    consul:
-      host: localhost
-      port: 8500
-      discovery:
-        service-name: ${spring.application.name}
 ```
 
 ### 配置监控路径
 
-在消费者consumer中配置
+在生产者中配置
 
 #### 添加依赖
 
 ```xml
- <!-- actuator-->
+ <!-- 监控信息依赖 -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-actuator</artifactId>
-    <version>2.0.4.RELEASE</version>
 </dependency>
 <!-- 仪表盘-->
 <dependency>
     <groupId>org.springframework.cloud</groupId>
-    <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
-    <version>2.0.4.RELEASE</version>    
+    <artifactId>spring-cloud-starter-hystrix-dashboard</artifactId>
 </dependency>
 ```
 
@@ -819,8 +813,9 @@ public ServletRegistrationBean  getServlet(){
     HystrixMetricsStreamServlet streamServlet = new HystrixMetricsStreamServlet();
     ServletRegistrationBean registrationBean = new ServletRegistrationBean(streamServlet);
     registrationBean.setLoadOnStartup(1);
-    registrationBean.addUrlMappings("/hystrix.stream");
-    registrationBean.setName("HystrixMetricsStreamServlet");
+    registrationBean.addUrlMappings("/actuator/hystrix.stream");
+    // registrationBean.addUrlMappings("/hystrix.stream");
+    // registrationBean.setName("HystrixMetricsStreamServlet");
     return registrationBean;
 }
 ```
