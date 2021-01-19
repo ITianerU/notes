@@ -26,6 +26,7 @@
     <log4j.version>1.2.17</log4j.version>
     <springcloud.version>Greenwich.SR1</springcloud.version>
     <springcloud.component.version>1.4.6.RELEASE</springcloud.component.version>
+    <springcloud.config.version>2.1.1.RELEASE</springcloud.config.version>
     <springboot.version>2.1.4.RELEASE</springboot.version>
     <springcloud-api.version>1.0</springcloud-api.version>
     <mysql.version>5.1.47</mysql.version>
@@ -85,6 +86,24 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-hystrix-dashboard</artifactId>
             <version>${springcloud.component.version}</version>  
+        </dependency>
+        <!-- zuul 服务网关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-zuul</artifactId>
+            <version>${springcloud.component.version}</version>  
+        </dependency>
+        <!-- springcloud config 服务端-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-config-server</artifactId>
+            <version>${springcloud.config.version}</version>
+        </dependency>
+        <!-- springcloud config 客户端-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+            <version>${springcloud.config.version}</version>
         </dependency>
         <!-- springboot -->
         <dependency>
@@ -874,34 +893,21 @@ turbine:
 
 # 服务网关(Zuul)
 
+包含对请求的路由和过滤两个功能
+
 ### 添加依赖
 
 ```xml
-<dependencies>
-    <!-- zuul -->
-    <dependency>
-        <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-starter-netflix-zuul</artifactId>
-        <version>2.0.4.RELEASE</version>
-    </dependency>
-    <!--consul-->
-    <dependency>
-        <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-    </dependency>
-</dependencies>
-<!--srping cloud-->
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dependencies</artifactId>
-            <version>Finchley.RELEASE</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
+<!-- zuul -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-zuul</artifactId>
+</dependency>
+<!-- eureka 客户端 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-eureka</artifactId>
+</dependency>
 ```
 
 ### 添加注解
@@ -915,26 +921,33 @@ turbine:
 
 ```yml
 server:
-  port: 8010
+  port: 9527
 
 spring:
   application:
-    name: mango-zuul
-  cloud:
-    consul:
-      host: localhost
-      port: 8500
-      discovery:
-        service-name: ${spring.application.name}
+    name: springcloud-zuul
+    
+# eureka配置
+eureka:
+	client:
+		service-url: 
+			defaultZone: http://localhost:7001/eureka/   # 注册中心地址
+	instance:
+		instance-id: # 服务名 会显示在eureka的监控页上
+		prefer-ip-address: true # 鼠标放到服务名上, 左下角能显示出该服务的真实ip 
+
 zuul:
-  # zuul网关默认会代理所有注册到注册中心的服务, 可不用配置routes
+  # zuul网关默认会代理所有注册到注册中心的服务, 可不用配置routes;
+  # 建议配置routes, 将服务名替换成别的名称, 避免直接暴露
   routes: 
-    ribbon:
-      path: /ribbon/**
-      serviceId: mango-consumer  # 转发到消费者
-    feign:
-      path: /feign/**
-      serviceId: mango-consumer
+    自定义名称A:
+      path: /自定义路径A/**
+      serviceId: 被代理的服务名  # 转发到消费者
+    自定义名称B:
+      path: /自定义路径B/**
+      serviceId: 被代理的服务名
+  ignored-services: "*"  # 禁用所有使用服务名进行访问
+  ignored-services: "被代理的服务名"
   prefix: /v1  # 接口前缀, 一般用来显示版本号
 ```
 
@@ -945,8 +958,9 @@ zuul:
 http://ip:8010/v1/ribbon/接口名称
 http://ip:8010/v1/fegin/接口名称
 
-# 在没有配置routes的情况下, 可通过服务名进行访问
-http://ip:8010/v1/mango-consumer/ribbon/接口名称
+# 在没有配置routes的情况下, 可通过服务名进行访问, 不推荐这种方式, 会暴露出服务名
+# ignored-services会禁用该功能
+http://ip:9527(zuul网关的端口号)/服务名/接口路径
 ```
 
 ### 熔断器
@@ -1069,92 +1083,58 @@ public class MyFilter extends ZuulFilter {
 
 ### 添加依赖
 
-新建项目, 添加依赖
-
 ```xml
-<!-- spring config -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-eureka</artifactId>
+</dependency>
 <dependency>
     <groupId>org.springframework.cloud</groupId>
     <artifactId>spring-cloud-config-server</artifactId>
-    <version>2.0.4.RELEASE</version>
 </dependency>
-<!-- consul -->
-<dependency>
-    <groupId>org.springframework.cloud</groupId>
-    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-</dependency>
+```
 
-<!--srping cloud-->
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dependencies</artifactId>
-            <version>Finchley.RELEASE</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
+### 在github上创建项目
+
+configuration_center, 根目录下创建config/application.yml, application-dev.yml, application-test.yml
+
+### 添加配置
+
+```yml
+server:
+	port: 3344
+	
+spring:
+	application:
+		name: springcoud-config-server
+	cloud:
+        # 云端配置
+        config:
+          label: master # 分支
+          server:
+            git:
+              uri: https://gitee.com/ITianerU/configuration_center.git # 配置git仓库， 这里用码云
+              search-paths: config  # 配置文件所在的文件夹路径
+              username: username
+              password: password
 ```
 
 ### 添加注解
 
 ```java
 // 在启动类添加注解
-@EnableConfigServer
-@EnableDiscoveryClient
-```
-
-### 添加配置
-
-```yml
-server:
-  port: 8020
-
-spring:
-  application:
-    name: mango-config
-#  profiles:            # 该配置可读取本地的配置文件, 启动该配置后, 无需配置下面的config
-#    active: native
-  cloud:
-    consul:
-      host: localhost
-      port: 8500
-      discovery:
-        service-name: ${spring.application.name}
-    # 云端配置
-    config:
-      label: master # 分支
-      server:
-        git:
-          uri: https://gitee.com/ITianerU/configuration_center.git # 配置git仓库， 这里用码云
-          search-paths: config-repo  # 配置文件所在的文件夹路径
-          username: username
-          password: password
+@EnableConfigServer 
 ```
 
 ### 使用
 
-#### 本地
-
-```properties
-# 在resources添加配置文件
-# 如 ~ consumer-dev.properties
-hello=hello,dev configurations local.
-```
-
-```
-启动项目
-访问 http://192.168.42.95:8020/consumer/dev 即可读取到配置
-访问 http://192.168.42.95:8020/consumer-dev.properties 可读取文件内容
-```
-
-#### 云端
-
-```properties
-# 在代码仓库中创建配置文件, 与本地用法相同
-```
+- http://ip:3344/application-test.yml
+- http://ip:3344/application/test/master    // master指的是分支
+- http://ip:3344/master/application-test.yml
 
 ## 客户端
 
@@ -1167,38 +1147,23 @@ hello=hello,dev configurations local.
 <dependency>
     <groupId>org.springframework.cloud</groupId>
     <artifactId>spring-cloud-starter-config</artifactId>
-    <version>2.0.4.RELEASE</version>
 </dependency>
 ```
 
 ### 添加配置
 
-新建bootstrap.yml, 将application.yml中的部分配置移过来, config是新加的配置
+新建bootstrap.yml(bootstrap表示系统级别的配置, 优先级高), 将application.yml(用户级别的配置)中的部分配置移过来, config是新加的配置
+
+使用bootstrap的原因是, 防止配置文件被远程的替换掉
 
 ```yml
 spring:
-  cloud:
-    consul:
-      host: localhost
-      port: 8500
-      discovery:
-        service-name: ${spring.application.name}
-    config:
-      discovery:
-        enabled: true  # 开启服务发现
-        service-id: mango-config  # 配置服务名称
-      # 访问 http://localhost:8020/name/profile
-      name: consumer  # 对应name部分
-      profile: dev  # 对应profile部分
-      label: master  # 对应git分支
-```
-
-### 使用
-
-```java
-// 读取配置文件, 将配置文件中key为hello的值注入
-@Value("{hello}")
-private String hello;
+    cloud:
+        config:
+            uri: 服务端的访问地址
+            name: consumer  # 要从github上读取的配置文件名, 不需要后缀
+            profile: dev  # 对应的环境
+            label: master  # 应git分支
 ```
 
 ### Refresh机制
