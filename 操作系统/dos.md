@@ -100,9 +100,32 @@ mspaint
 
 ### 记事本
 
-```
+```sh
 notepad
 ```
+
+## telnet
+
+win10默认没有启动telnet
+
+**启动步骤:**  控制面板->程序->启用或关闭Windows功能->Telnet Clinet
+
+### 命令
+
+#### 连接服务
+
+```sh
+telnet ip 端口号   # 连接
+# 按 ctrl + ] 进入telnet模式
+```
+
+#### 发送消息
+
+```shell
+send 消息
+```
+
+
 
 ## 其他
 
