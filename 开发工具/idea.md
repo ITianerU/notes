@@ -67,13 +67,19 @@ Template text：
 #### 生成调用方法的返回值变量
 
 ```
-ctrl+alt+v
+ctrl + alt + v
 ```
 
 #### 生成serialVersionUID
 
 ```
-选中类名 alt+enter
+选中类名 alt + enter
+```
+
+#### 类层级结构
+
+```
+ctrl + H
 ```
 
 

@@ -114,9 +114,9 @@ send msg
 
 #### 应用实例
 
-##### **Buffer**
+##### Buffer
 
-基本用法
+**基本用法**
 
 ```java
 public class BasicBuffer {
@@ -137,6 +137,96 @@ public class BasicBuffer {
     }
 }
 ```
+
+##### Channel
+
+**基本用法**
+
+写本地文件
+
+```java
+public class NIOFileChannel01 {
+    // 将字符串写入到buffer中, 将buffer中数据写入到channel(通道)中, 通道写入到文件中
+    public static void main(String[] args) throws IOException {
+        String s = "hello, 老王";
+        // 创建一个输出流
+        FileOutputStream fileOutputStream = new FileOutputStream("D:\\code\\nowork\\java\\demo\\src\\a.txt");
+        // 通过输出流获取文件channel
+        FileChannel fileChannel = fileOutputStream.getChannel();
+        // 创建一个缓冲区
+        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+        // 将字符放入到buffer中
+        byteBuffer.put(s.getBytes(StandardCharsets.UTF_8));
+        // buffer写->读
+        byteBuffer.flip();
+        // 写入到channle中
+        fileChannel.write(byteBuffer);
+        // 关闭
+        fileOutputStream.close();
+        fileChannel.close();
+    }
+}
+```
+
+读本地文件
+
+```java
+public class NIOFileChannelRead {
+    public static void main(String[] args) throws IOException {
+        // 创建一个输入流
+        File file = new File("D:\\code\\nowork\\java\\demo\\src\\a.txt");
+        FileInputStream fileInputStream = new FileInputStream(file);
+        // 输入流创建一个fileChannel
+        FileChannel fileChannel = fileInputStream.getChannel();
+        // 创建一个缓冲区
+        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+        // 从输入流中读取字符并写入到缓冲区
+        fileChannel.read(byteBuffer);
+        // 输出
+        System.out.println(new String(byteBuffer.array()));
+        // 关闭
+        fileInputStream.close();
+        fileChannel.close();
+    }
+}
+```
+
+复制文件
+
+```java
+public class NIOFileChannelRead$Write {
+    public static void main(String[] args) throws IOException {
+        File fileA = new File("src/a.txt");
+        FileInputStream fileInputStream = new FileInputStream(fileA);
+        FileChannel fileInputStreamChannel = fileInputStream.getChannel();
+
+        File fileB = new File("src/b.txt");
+        FileOutputStream fileOutputStream = new FileOutputStream(fileB);
+        FileChannel fileOutputStreamChannel = fileOutputStream.getChannel();
+
+        ByteBuffer byteBuffer = ByteBuffer.allocate(128);
+        while(true){
+            // 如果文件过大, 字符数量超过缓冲区的大小, 需要多次读取多次写入
+            int read = fileInputStreamChannel.read(byteBuffer);
+            // read == -1时说明读取完毕
+            if(read == -1){
+                break;
+            }
+            // 从写->读
+            byteBuffer.flip();
+            fileOutputStreamChannel.write(byteBuffer);
+            // 从读->写
+            byteBuffer.flip();
+        }
+        fileInputStream.close();
+        fileInputStreamChannel.close();
+        fileOutputStream.close();
+        fileOutputStreamChannel.close();
+    }
+}
+```
+
+
 
 ### AIO(不常用)
 
