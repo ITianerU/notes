@@ -96,7 +96,7 @@ send msg
 
 **适用场景:** NIO方式适用于连接数目多且连接比较短的架构, 比如聊天服务器, 弹幕系统, 服务器之间的通讯, 编程较为复杂
 
-**三大核心组件:**  
+#### 三大核心组件  
 
 - **Selector(选择器)**  
   - 一个线程, 对应着一个选择器
@@ -133,6 +133,130 @@ public class BasicBuffer {
         while (intBuffer.hasRemaining()) {
             // get()方法中维护了一个索引, 每get一次, 索引向后移动了一次
             System.out.println(intBuffer.get());
+        }
+    }
+}
+```
+
+类型区分
+
+```java
+public class BasicBuffer {
+    public static void main(String[] args) {
+        // buffer可以存入任意类型的数据, 但是在取出时数据类型要对应
+        ByteBuffer byteBuffer = ByteBuffer.allocate(128);
+        byteBuffer.putInt(10);
+        byteBuffer.putChar('A');
+
+        byteBuffer.flip();
+        System.out.println(byteBuffer.getInt());
+        System.out.println(byteBuffer.getChar());
+    }
+} 
+```
+
+只读buffer
+
+```java
+public class ReadOnlyBuffer {
+    public static void main(String[] args) {
+        // 存入数据
+        ByteBuffer byteBuffer = ByteBuffer.allocate(64);
+        for (int i = 0; i < 64; i++) {
+            byteBuffer.put((byte) i);
+        }
+        byteBuffer.flip();
+
+        // 得到一个只读buffer
+        ByteBuffer readOnlyBuffer = byteBuffer.asReadOnlyBuffer();
+        while (readOnlyBuffer.hasRemaining()){
+            System.out.println(readOnlyBuffer.get());
+        }
+        byteBuffer.flip();
+        // 此时再写入, 会报错
+        readOnlyBuffer.put((byte)1);
+    }
+}
+```
+
+映射buffer
+
+```java
+// 可以让文件直接在内存(堆外内存)中修改, 操作系统不需要拷贝一次
+public class MappedByteBufferTest {
+    public static void main(String[] args) throws IOException {
+        // 读文件
+        RandomAccessFile randomAccessFile = new RandomAccessFile("src/a.txt", "rw");
+        // 获取通道
+        FileChannel randomAccessFileChannel = randomAccessFile.getChannel();
+        /*
+        * 参数一: 模式
+        * 参数二: 可以直接修改的起始位置
+        * 参数三: 映射到内存的大小, 即, 可以将a.txt的多少个字节映射到内存
+        * 将文件中指定位置的部分, 映射到内存中, 在内存中修改后再保存回文件中
+        * */
+        MappedByteBuffer mappedByteBuffer = randomAccessFileChannel.map(FileChannel.MapMode.READ_WRITE, 0, 5);
+        // 修改
+        mappedByteBuffer.put(0, (byte) 'H');
+        // 索引不能大于指定的大小
+        // mappedByteBuffer.put(5, (byte) '1');
+        System.out.println((byte) 9);
+
+        randomAccessFile.close();
+        randomAccessFileChannel.close();
+    }
+}
+```
+
+分散,聚合
+
+```java
+/*
+*  Scattering: 分散: 将数据写入到buffer时, 可以采用buffer数组, 以此写入(批量写入)
+*  Gathering: 聚合: 将数据读出到buffer中, 可以采用buffer数组, 依次读写(批量写入)
+* */
+public class ScatteringAndGatheringTest {
+    public static void main(String[] args) throws IOException {
+        // 创建socket通道
+        ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+        // 创建ip对象, 并指定端口
+        InetSocketAddress inetSocketAddress = new InetSocketAddress(8000);
+        // 绑定端口
+        serverSocketChannel.socket().bind(inetSocketAddress);
+        // 设置buffer组, 最大容纳的字符数量
+        ByteBuffer[] byteBuffers = new ByteBuffer[2];
+        byteBuffers[0] = ByteBuffer.allocate(5);
+        byteBuffers[1] = ByteBuffer.allocate(3);
+        // 等待客户端连接
+        SocketChannel socketChannel = serverSocketChannel.accept();
+        // 最大接受字符数量
+        int messageLength = 0;
+        for(ByteBuffer byteBuffer : byteBuffers){
+            messageLength += byteBuffer.capacity();
+        }
+        while (true) {
+            // 接受客户端输入的字符数量
+            int byteRead = 0;
+            // 当前接收的数量小于最大接受数量, 就继续循环
+            // 如果当前
+            while (byteRead < messageLength){
+                // 返回buffer接收到的个数, 如果未输入会阻塞
+                // 输入的字符会自动填充到buffer数组中, 如果buffer数组被填满, 未被填充的字符会阻塞, 再运行到当前代码时, 会自动输入
+                long l = socketChannel.read(byteBuffers);
+                // 累计读取的字符数
+                byteRead += l;
+                System.out.println("byteRead=" + byteRead);
+                for (ByteBuffer byteBuffer : byteBuffers) {
+                    System.out.println("position=" + byteBuffer.position() + ",limit=" + byteBuffer.limit());
+                }
+            }
+            // 反转
+            Arrays.asList(byteBuffers).stream().forEach(byteBuffer -> byteBuffer.flip());
+            
+            long byteWrite = socketChannel.write(byteBuffers);
+            System.out.println("byteWrite=" + byteWrite);
+            Arrays.asList(byteBuffers).stream().forEach(byteBuffer -> byteBuffer.clear());
+            System.out.println("byteRead=" + byteRead + ",byteWrite=" + byteWrite + ",messageLength=" + messageLength);
         }
     }
 }
@@ -212,11 +336,10 @@ public class NIOFileChannelRead$Write {
             if(read == -1){
                 break;
             }
-            // 从写->读
             byteBuffer.flip();
             fileOutputStreamChannel.write(byteBuffer);
-            // 从读->写
-            byteBuffer.flip();
+            // 清空缓存
+            byteBuffer.clear();
         }
         fileInputStream.close();
         fileInputStreamChannel.close();
@@ -225,6 +348,33 @@ public class NIOFileChannelRead$Write {
     }
 }
 ```
+
+复制文件(自带api复制)
+
+```java
+public class NIOFileChannelCopy {
+    public static void main(String[] args) throws IOException {
+        // 读
+        File fileA = new File("src/编译器背景图片.jpeg");
+        FileInputStream fileInputStream = new FileInputStream(fileA);
+        FileChannel fileInputStreamChannel = fileInputStream.getChannel();
+        // 写
+        String name = fileA.getName().split("\\.")[0] + "-副本";
+        File fileB = new File("src/"+ name+ ".jpeg");
+        FileOutputStream fileOutputStream = new FileOutputStream(fileB);
+        FileChannel fileOutputStreamChannel = fileOutputStream.getChannel();
+        // 从一个通道直接复制到另一个通道
+        fileOutputStreamChannel.transferFrom(fileInputStreamChannel, 0, fileInputStreamChannel.size());
+        // 关闭
+        fileInputStream.close();
+        fileInputStreamChannel.close();
+        fileOutputStream.close();
+        fileOutputStreamChannel.close();
+    }
+}
+```
+
+##### Selector
 
 
 

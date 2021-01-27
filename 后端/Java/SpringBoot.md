@@ -647,7 +647,7 @@ public class SwaggerConfig {
         Contact contact = new Contact("ITianerU","主页地址", "邮箱");
         return new ApiInfo("文档标题", "文档描述", "版本", "组织url", contact, "许可证", "许可证连接",
                            new ArrayList()
-        )
+        );
         // return new ApiInfoBuilder().build();
     }
 }
@@ -657,13 +657,13 @@ public class SwaggerConfig {
 
 ```
 项目启动后,访问
-启动路径/swagger-ui.html
+启动路径/swagger-ui.html   v2.0访问地址
 ```
 
 ##### controller
 
 ```java
-@Api("控制类")
+@Api(tags = "控制类")
 @RestController
 public class HelloController{
     @GetMapping("/hello")
@@ -684,7 +684,6 @@ public class HelloController{
 controller接口中, 如果返回实体类, swagger-ui就会显示该实体类
 
 ```java
-@Api("注释")
 @ApiModel("用户实体类")
 public class User{
     @ApiModelProperty("用户名")
