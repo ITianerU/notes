@@ -376,6 +376,92 @@ public class NIOFileChannelCopy {
 
 ##### Selector
 
+**服务端**
+
+```java
+public class NIOServer {
+    public static void main(String[] args) throws IOException {
+        // 创建socket通道
+        ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+        // 创建selector
+        Selector selector = Selector.open();
+        // 绑定监听的端口号
+        serverSocketChannel.socket().bind(new InetSocketAddress(6666));
+        // 设置为非阻塞
+        serverSocketChannel.configureBlocking(false);
+        // 将通道注册到selector中, 并指定监听的事件(OP_ACCEPT: 有新的连接, OP_CONNECT: 连接成功, OP_READ: 读, OP_WRITE: 写)
+        serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+        // 循环监听
+        while (true){
+            // 等待1秒, 如果没有事件发生, 干别的
+            if (selector.select(1000) == 0){
+                System.out.println("服务器等待了1秒");
+                continue;
+            }
+            // 如果返回的大于0, 就获取到相关的selectionKey集合
+            // >0 表示已经获取到相关的事件
+            // 通过selectionKey反向获取通道
+            Set<SelectionKey> selectionKeys = selector.selectedKeys();
+            Iterator<SelectionKey> keyIterator = selectionKeys.iterator();
+            while(keyIterator.hasNext()){
+                SelectionKey selectionKey = keyIterator.next();
+                // 根据k 对应的通道发生的事件做相依的处理
+                if(selectionKey.isAcceptable()){
+                    // accept()本身是阻塞的, 但是isAcceptable()判断是有客户端连接的事件, accept会立刻执行, 不会阻塞
+                    SocketChannel socketChannel = serverSocketChannel.accept();
+                    System.out.println("客户端连接成功, 生成了一个socketChannel" + socketChannel.hashCode());
+                    // 设置成非阻塞
+                    socketChannel.configureBlocking(false);
+                    // 注册到选择器, 并给该通道, 绑定一个buffer
+                    socketChannel.register(selector, SelectionKey.OP_READ, ByteBuffer.allocate(1024));
+                }else if (selectionKey.isConnectable()){
+
+                }else if(selectionKey.isReadable()){
+                    // 通过key, 反向获取channel
+                    SocketChannel socketChannel = (SocketChannel)selectionKey.channel();
+                    ByteBuffer buffer = (ByteBuffer) selectionKey.attachment();
+                    socketChannel.read(buffer);
+                    System.out.println("from 客户端" + new String(buffer.array()));
+
+                }else if(selectionKey.isWritable()){
+
+                }
+                // 手动从集合中删除当前的key, 防止重复操作
+                keyIterator.remove();
+            }
+        }
+    }
+}
+```
+
+**客户端**
+
+```java
+public class NIOClient {
+    public static void main(String[] args) throws IOException {
+        // 得到一个网络通道
+        SocketChannel socketChannel = SocketChannel.open();
+        // 设置非阻塞
+        socketChannel.configureBlocking(false);
+        // 提供服务器端的ip和端口
+        InetSocketAddress inetSocketAddress = new InetSocketAddress("127.0.0.1", 6666);
+        // 连接服务器
+        if(!socketChannel.connect(inetSocketAddress)){
+            while(!socketChannel.finishConnect()){
+                System.out.println("因为连接需要时间, 客户端不会阻塞, 可以做其他工作");
+            }
+        }
+        String s = "hello 老王";
+        // 根据字符串的大小, 创建buffer
+        ByteBuffer byteBuffer = ByteBuffer.wrap(s.getBytes(StandardCharsets.UTF_8));
+        // 发送数据, 将数据写入通道
+        socketChannel.write(byteBuffer);
+        System.in.read();
+    }
+}
+```
+
 
 
 ### AIO(不常用)
