@@ -15,7 +15,11 @@ alias cnpm="npm --registry=https://registry.npm.taobao.org \
 npm install -g cnpm --registry=https://registry.npm.taobao.org
 ```
 
+## 配置依赖包仓库路径
 
+- 找到nodejs安装路径/node_modules/npm/
+- 编辑npmrc文件, 指定自己创建的依赖包仓库路径
+- 修改环境变量Path, 添加依赖包仓库路径
 
 # Express
 
@@ -72,8 +76,6 @@ var md5 = crypto.createHash('md5');
 var token_before = id + init_token;
 return md5.update(token_before).digest('hex');
 ```
-
-
 
 #### 安装mongoose
 

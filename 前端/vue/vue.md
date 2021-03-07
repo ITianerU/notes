@@ -426,3 +426,97 @@ const demo2 = Vue.extend({
 </script>
 ```
 
+父子组件相互访问
+
+父访问子
+
+- $refs
+
+```js
+// 使用子组件的方法
+this.$refs("子组件的ref属性").method()
+// 访问子组件的data中的属性
+this.$refs("子组件的ref属性").property
+```
+
+- $children 不常用, 会返回子组件列表, 需要索引指定, 常用来遍历
+
+```js
+// 使用子组件的方法
+this.$children[0].method()
+// 访问子组件的data中的属性
+this.$children[0].property
+```
+
+子访问父(不推荐使用, 会导致耦合度过高, 依赖于父组件搭配使用)
+
+- $parent
+
+```js
+this.$parent.method()
+this.$parent.property
+```
+
+- $root 访问根组件的属性, 方法
+
+## 插槽(slot)
+
+组件预留的位置,  供父组件在使用时, 填入想要展示的内容
+
+```html
+<div id="app">
+   	<!-- 往插槽中, 填入<span>{{message}}</span> -->
+    <demo><span>{{message}}</span></demo>
+    <!-- 使用命名插槽 -->
+    <demo><button slot="slotName">按钮</button></demo>
+</div>
+<script>
+    const demo = Vue.extend({
+        // 组件中, 设置插槽
+        template: `<div>
+                        <h1>hello</h1>
+					  <slot><span>默认值1</span></slot>
+					  <h1>world</h1>
+					  <slot name="slotName">默认值2</slot>
+                    </div>`,
+        
+    })
+    const app = new Vue({
+        el: "#app",
+        data: {
+            message: "jack"
+        },
+        components: {
+            demo: demo
+        },
+    })
+</script>
+```
+
+
+
+# 监听器(watch)
+
+监听属性的改变
+
+```html
+<div id="app">
+    <input type="text" v-model="msg1"/> 输入1
+    <input type="text" v-model="msg2"/> 输入2
+</div>
+<script>
+    const app = new Vue({
+        el: "#app",
+        data: {
+            msg1: "",
+            msg2: ""
+        },
+        watch: {
+            msg1(newValue, oldValue){
+                this.msg2 = newValue + "...";
+            }
+        }
+    })
+</script>
+```
+
