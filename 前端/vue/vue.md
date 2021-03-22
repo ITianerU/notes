@@ -19,10 +19,18 @@
   需要先安装nodejs
 
   ```shell
-  npm install vue   # vue
+  npm install -g vue   # vue
   npm install -g @vue/cli  # vue脚手架
   # 或者cnpm安装
+  # 安装cnpm
+  npm install -g cnpm
   ```
+
+  npm install常用参数
+
+  - -g  全局安装
+  - -D 或 --save-dev  本地安装, 安装到开发依赖
+  - -S 或 --save  本地安装, 安装到运行时依赖
 
   创建vue项目
 
@@ -35,24 +43,38 @@
 ## 基本样例
 
 ```html
-<div id="app"></div>
+<div id="app">
+	
+</div>
 <script>
 	const app = new Vue({
         el: "#app",
-        data: {}
+        data: {
+            name
+        },
+        methods: {},
+        // 生命周期钩子函数
+        beforeCreate() {},
+        created() {},
+        beforeMount() {},
+        mounted() {},
+        beforeUpdate() {},
+        updated() {},
+        beforeDestroy() {},
+        destroyed() {},
+        // 计算属性
+        computed: {},
+        // 过滤器
+        filters: {},
+        // 监听器
+        watch: {},
+        // 组件
+        components: {}
     })
 </script>
 ```
 
 # 基础用法
-
-- v-once  
-
-  拒绝响应式,  页面显示的数据在初始化之后, 无法再修改
-
-  ```html
-  <span v-once>{{msg}}</span>
-  ```
 
 - v-html
 
@@ -81,6 +103,14 @@
   <div v-text="msg">xxx</div>
   <!-- 会和xxx拼接 -->
   <div>{{msg}}xxx</div>
+  ```
+
+- v-once  
+
+  拒绝响应式,  页面显示的数据在初始化之后, 无法再修改
+
+  ```html
+  <span v-once>{{msg}}</span>
   ```
 
 - v-pre
@@ -275,6 +305,31 @@
 </script>
 ```
 
+# 监听器(watch)
+
+监听属性的改变
+
+```html
+<div id="app">
+    <input type="text" v-model="msg1"/> 输入1
+    <input type="text" v-model="msg2"/> 输入2
+</div>
+<script>
+    const app = new Vue({
+        el: "#app",
+        data: {
+            msg1: "",
+            msg2: ""
+        },
+        watch: {
+            msg1(newValue, oldValue){
+                this.msg2 = newValue + "...";
+            }
+        }
+    })
+</script>
+```
+
 # 组件
 
 ## 基础用法
@@ -368,7 +423,7 @@
 定义组件属性
 
 ```js
-// 支持的类型有 String, Number, Boolean, Array, Object, Date, Function, Symbol
+// 支持的类型有 String, Number, Boolean, Array, Object, Date, Function
 const demo2 = Vue.extend({
     props: {
         name: {
@@ -432,32 +487,18 @@ const demo2 = Vue.extend({
 
 - $refs
 
+```html
+<hello ref=""></hello>
+```
+
+
+
 ```js
 // 使用子组件的方法
 this.$refs("子组件的ref属性").method()
 // 访问子组件的data中的属性
 this.$refs("子组件的ref属性").property
 ```
-
-- $children 不常用, 会返回子组件列表, 需要索引指定, 常用来遍历
-
-```js
-// 使用子组件的方法
-this.$children[0].method()
-// 访问子组件的data中的属性
-this.$children[0].property
-```
-
-子访问父(不推荐使用, 会导致耦合度过高, 依赖于父组件搭配使用)
-
-- $parent
-
-```js
-this.$parent.method()
-this.$parent.property
-```
-
-- $root 访问根组件的属性, 方法
 
 ## 插槽(slot)
 
@@ -474,7 +515,7 @@ this.$parent.property
     const demo = Vue.extend({
         // 组件中, 设置插槽
         template: `<div>
-                        <h1>hello</h1>
+                      <h1>hello</h1>
 					  <slot><span>默认值1</span></slot>
 					  <h1>world</h1>
 					  <slot name="slotName">默认值2</slot>
@@ -493,30 +534,112 @@ this.$parent.property
 </script>
 ```
 
+------
 
+====================**下面的部分需要使用脚手架**=================
 
-# 监听器(watch)
+# axios
 
-监听属性的改变
+vue推荐使用axios发送ajax请求
 
-```html
-<div id="app">
-    <input type="text" v-model="msg1"/> 输入1
-    <input type="text" v-model="msg2"/> 输入2
-</div>
-<script>
-    const app = new Vue({
-        el: "#app",
-        data: {
-            msg1: "",
-            msg2: ""
-        },
-        watch: {
-            msg1(newValue, oldValue){
-                this.msg2 = newValue + "...";
-            }
-        }
-    })
-</script>
+## 安装
+
+```js
+npm install -S axios
 ```
 
+## 配置
+
+在main.js中添加
+
+```js
+import axios from 'axios'
+Vue.prototype.$ajax=axios
+```
+
+## 使用
+
+```js
+this.$ajax.get("http://localhost:8000/test/str").then(function(res){
+    that.msg = res
+})
+```
+
+```js
+let obj = new URLSearchParams()
+obj.append("name", this.name)
+this.$ajax.post("http://localhost:8000/test/name", obj).then(function (res){
+    console.log(res);
+})
+```
+
+# 路由
+
+## 使用
+
+路由中配置
+
+```js
+{
+    path: '/about/:msg',
+    name: 'About',
+    component: about
+}
+```
+
+### 路径传值
+
+方式一
+
+```html
+<!-- to为要跳转的页面路径 -->
+<router-link to="/about/hello">About</router-link>
+```
+
+方式二
+
+```js
+// push传参为要跳转的页面路径
+this.$router.push("/about")
+// 传值, name指的是路由中配置的name属性, 不能使用path
+this.$router.push({name: "About", params:{msg: "hello"}})
+```
+
+取值
+
+```js
+$route.params.msg
+```
+
+### 参数传值
+
+方式一
+
+```html
+<!-- to为要跳转的页面路径 -->
+<router-link to="/about?msg=hello">About</router-link>
+```
+
+方式二
+
+```js
+// 传值, path指的是路由中配置的path属性, 也可以使用name
+this.$router.push({path: "/about", query:{msg: "hello"}});
+```
+
+取值
+
+```js
+$route.query.msg
+```
+
+# 运行/打包
+
+```shell
+npm run serve  # 运行
+npm run build  # 打包
+```
+
+# 集成
+
+将打包后的项目放入到Java项目静态资源文件目录下

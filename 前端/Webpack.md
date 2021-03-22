@@ -65,7 +65,9 @@ module.exports = {
         // path.resolve拼接路径, __dirname是node自带的全局变量
         path: path.resolve(__dirname, 'dist'),
         // 打包生成的压缩文件名
-        filename: 'bundle.js'
+        filename: 'bundle.js',
+        // 防止index.html找不到静态资源, 值为静态资源的路径
+        publicPath: 'dist/'
     },
 }
 ```
@@ -163,4 +165,126 @@ module.exports = {
 }
 ```
 
-### 
+## url-loader & file-loader
+
+用于加载图片, 图片在加载时, 会去检查url-loader配置的limit大小, 小于该值, 会被转换成base64加载
+
+大于limie值, 会使用file-loader加载
+
+### 安装
+
+```shell
+cnpm install url-loader --save-dev
+```
+
+### 配置
+
+在webpack.config.js补充module中rules
+
+```js
+module.exports = {
+    module: {
+        rules: [
+            {
+                test: /\.(png|jpg|gif|jpeg)$/,
+                use: [{
+                    loader: 'url-loader',
+                    options: {
+                        limit: 8192,
+                        // img表示打包后创建一个img文件夹
+                        // [name].[hash:8].[ext] 表示生成的文件名的规则
+                        // [name]使用原有的文件名, 拼接[hash:8]8为hash值, 拼接[ext]文件原有的后缀名
+                        name: 'img/[name].[hash:8].[ext]'  
+                    }  
+                }]
+            }
+        ]
+    }
+}
+```
+
+## babel-loader
+
+es6转es5
+
+### 安装
+
+```shell
+cnpm install --save-dev babel-loader@7 babel-core babel-preset-es2015
+```
+
+### 配置
+
+```js
+module.exports = {
+    module: {
+        rules: [
+            {
+                test: /\.js$/,
+                exclude: /(node_modules|bower_components)/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['es2015']
+                    }
+                }
+            },
+        ]
+    }
+}
+```
+
+## vue-loader
+
+对vue文件进行编译
+
+### 安装
+
+```shell
+cnpm install --save-dev vue-loader vue-template-compiler
+```
+
+### 配置
+
+```js
+const {VueLoaderPlugin} = require('vue-loader')
+module.exports = {
+    module: {
+        rules: [
+            {
+                test: /\.vue$/,
+                use: ['vue-loader']
+            }
+        ]
+    },
+    plugins: [
+        new VueLoaderPlugin()    // 引入vueloader插件
+    ]
+}
+```
+
+# Vue
+
+## 安装
+
+```shell
+cnpm install -S vue
+```
+
+## 配置
+
+在webpack.config.js中配置vue的编译器为runtime-compiler
+
+```js
+module.exports = {
+    resolve: {
+        alias: {
+            // 在安装的vue中找到vue.esm.js, 这个文件中包含runtime-compiler
+            // 当import vue的时候, 会来这里找是否指定了, 要使用的编译器
+            // 如果编译报错, 在import vue时, 可手动指定导入node_modules/vue/dist/vue.esm
+            'vue$': 'vue/dict/vue.esm.js'   
+        }
+    }
+}
+```
+

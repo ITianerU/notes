@@ -46,3 +46,63 @@ for(let i=0; i<btns.length; i++){
 }
 ```
 
+## 对象
+
+new的内部执行过程
+
+- 在内存中开辟一块空间
+- 创建一个空对象
+- this指向这个空对象    this = {}
+- 把空对象的内部原型指向构造函数的原型对象    this.\_proto_ = Person.prototype
+- 构造函数执行, 给this添加属性和方法
+- 最后把当前对象返回
+
+创建对象
+
+```js
+// 创建一个构造方法
+function Person(name){
+    this.name = name
+    this.say(){
+        console.log("my name is " + this.name);
+    }
+}
+let jack = new Person("jack")
+jack.say()
+```
+
+原型对象
+
+```js
+// Person是一个类, 动态的往类中添加一个方法
+// 已经创建的实例  new Person(), 可以调用这个方法
+Person.prototype.run = function(){}
+```
+
+## 函数执行方式
+
+## 方式一
+
+```js
+function sum(a, b){
+    // 这种方式, this指的是window对象
+    console.log(this);
+    return a+b
+}
+sum(1,2)
+```
+
+## 方式二
+
+```js
+function Cat(){
+    this.sum = function(a, b){
+        // 这种方式, this指的是创建的对象实例c
+        console.log(this);
+        return a+b
+    }
+}
+let c = new Cat();
+cat.sum(1,2)
+```
+

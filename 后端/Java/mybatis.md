@@ -35,24 +35,8 @@ password=123456
     <!-- 读取配置文件 -->
     <properties resource="db.properties">
         <!-- 内部定义属性值, 优先级没有外部引入的高 -->
-    	<property name="username" value="root"></property>
+        <property name="username" value="root"></property>
     </properties>
-	<!-- default选择环境, 每次只能使用一个 -->
-    <environments default="development">
-        <!-- 可配置多个environment, 连接不同的数据库 oracle/mysql等 -->
-        <environment id="development">
-            <!-- transactionManager是事务管理器可选择JDBC或者MANAGED, 配置成MANAGED没有事务 -->
-            <!-- 使用spring + mybatis时, 无需配置transactionManager, spring会使用自带的管理器覆盖配置 -->
-            <transactionManager type="JDBC"/>
-            <!-- type可选值 UNPOOLED(无连接池)|POOLED(有连接池)|JNDI(在EJB等容器中使用, 不常用) -->
-            <dataSource type="POOLED">
-                <property name="driver" value="${driver}"/>
-                <property name="url" value="${url}"/>
-                <property name="username" value="${username}"/>
-                <property name="password" value="${password}"/>
-            </dataSource>
-        </environment>
-    </environments>
     <settings>
         <!-- 开启缓存（二级缓存）-->
         <setting name="cacheEnabled" value="true"/>
@@ -69,14 +53,31 @@ password=123456
         <typeAlias alias="user" type="com.itianeru.pojo.User" />
         <!-- 也可以扫描包, 默认的别名是实体类首字母小写的名称 -->
         <!-- 也可以在实例类上使用 @Alias("别名")指定别名, 在resultType和parameterType中使用基本类型, 需要在前面加下划线, 如 _int, _double, 不加下划线, 是指包装类, 其他的常用集合,只要首字母小写即可如, map, hashMap, arrayList等 -->
-        <package name="com.itiianeru.pojo">
+        <package name="com.itiianeru.pojo" />
     </typeAliases>
+    <!-- default选择环境, 每次只能使用一个 -->
+    <environments default="development">
+        <!-- 可配置多个environment, 连接不同的数据库 oracle/mysql等 -->
+        <environment id="development">
+            <!-- transactionManager是事务管理器可选择JDBC或者MANAGED, 配置成MANAGED没有事务 -->
+            <!-- 使用spring + mybatis时, 无需配置transactionManager, spring会使用自带的管理器覆盖配置 -->
+            <transactionManager type="JDBC"/>
+            <!-- type可选值 UNPOOLED(无连接池)|POOLED(有连接池)|JNDI(在EJB等容器中使用, 不常用) -->
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+    
     <!-- 映射器 -->
     <mappers>
         <mapper resource="mapper/*.xml"/>
         <!-- 接口映射, 需要xml和接口在同一目录下, 并且名称要相同 UserMapper.class 和UserMapper.xml -->
         <mapper class="com.itianeru.mapper.UserMapper"/>
-        <package name="com.itianeru.mapper">
+        <package name="com.itianeru.mapper" />
     </mappers>
 </configuration>
 ```
@@ -501,6 +502,19 @@ ehcache.xml
     <groupId>org.mybatis.generator</groupId>
     <artifactId>mybatis-generator-maven-plugin</artifactId>
     <version>1.4.0</version>
+    <dependencies>
+        <dependency>
+            <groupId>org.mybatis.generator</groupId>
+            <artifactId>mybatis-generator-core</artifactId>
+            <version>1.4.0</version>
+        </dependency>
+        <!-- 插件需要单独配置jdbc -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.23</version>
+        </dependency>
+    </dependencies>
     <executions>
         <execution>
             <id>Generate MyBatis Artifacts</id>
@@ -536,6 +550,8 @@ ehcache.xml
     <!--<properties resource="db.properties"></properties>-->
     <!--配置数据库连接信息-->
     <context id="default" targetRuntime="MyBatis3">
+        <!-- 配置该插件, 防止生成的mapper.xml里面代码重复 -->
+        <plugin type="org.mybatis.generator.plugins.UnmergeableXmlMappersPlugin" />
         <!--不让生成注释-->
         <commentGenerator>
             <property name="suppressAllComments" value="true"></property>
@@ -681,7 +697,7 @@ ehcache.xml
 
       |      属性       |                   功能描述                    | 是否必须 |           备注           |
       | :-------------: | :-------------------------------------------: | :------: | :----------------------: |
-      | `targetPackage` |           生成的`XML`映射文件的包名           |   `Y`    |      例如`mappings`      |
+      | `targetPackage` |           生成的`XML`映射文件的包名           |   `Y`    |       例如`mapper        |
       | `targetProject` | 生成的`XML`映射文件相对于项目（根目录）的位置 |   `Y`    | 例如`src/main/resources` |
 
       **标签**
