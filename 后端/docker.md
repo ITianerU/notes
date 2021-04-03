@@ -574,7 +574,7 @@ docker exec [容器名] sh -c ' exec mysqldump --all-databases -uroot -p"123456"
   - redis-server /usr/local/etc/redis/redis.conf --appendonly yes   # 执行启动命令
 
 ```
-docker run -p 6379:6379 --name redis -v /home/li/redis-data/data:/data -v /home/li/redis-data/conf/redis.conf:/usr/local/etc/redis/redis.conf  -d redis  redis-server /usr/local/etc/redis/redis.conf --appendonly yes
+docker run -p 6379:6379 --name redis -v /home/li/redis-data/data:/data -v /home/li/redis-data/conf/redis.conf:/usr/local/etc/redis/redis.conf  -d redis  redis-server /usr/local/etc/redis/redis.conf --appendonly yes --requirepass 123456
 ```
 
 测试安装

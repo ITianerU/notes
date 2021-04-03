@@ -67,6 +67,7 @@ module.exports = {
         // 打包生成的压缩文件名
         filename: 'bundle.js',
         // 防止index.html找不到静态资源, 值为静态资源的路径
+        // 当使用html-webpack-plugin插件时, 视情况可不需要配置
         publicPath: 'dist/'
     },
 }
@@ -263,13 +264,7 @@ module.exports = {
 }
 ```
 
-# Vue
-
-## 安装
-
-```shell
-cnpm install -S vue
-```
+# resolve
 
 ## 配置
 
@@ -278,6 +273,8 @@ cnpm install -S vue
 ```js
 module.exports = {
     resolve: {
+        // 导入时, 可省略后缀
+        extensions: ['.js', '.css', '.vue'],
         alias: {
             // 在安装的vue中找到vue.esm.js, 这个文件中包含runtime-compiler
             // 当import vue的时候, 会来这里找是否指定了, 要使用的编译器
@@ -286,5 +283,189 @@ module.exports = {
         }
     }
 }
+```
+
+# plugin
+
+## 添加版权plugin
+
+### 配置
+
+```js
+const webpack = require('webpack')
+module.exports = {
+    plugins: [
+        new webpack.BannerPlugin("最终版权归ITinaerU所有")
+    ]
+}
+```
+
+## 打包html
+
+会将html一起打包, 并将打包后的js, 自动引入到html中
+
+### 安装
+
+```shell
+cnpm install html-webpack-plugin -D
+```
+
+### 配置
+
+```js
+const htmlWebpackPlugin = require('html-webpack-plugin')
+module.exports = {
+    plugins: [
+        new htmlWebpackPlugin({
+            // 指定模板文件
+            template: "index.html"
+        })
+    ]
+}
+```
+
+### 模板文件
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div id="app">
+    </div>
+</body>
+</html>
+```
+
+## 代码压缩/混淆
+
+高版本的webpack在使用prod打包模式时自动压缩混淆, 不需要安装, 自带
+
+### 安装
+
+```shell
+cnpm install uglifyjs-webpack-plugin -D
+```
+
+### 配置
+
+```js
+const UglifyjsWebpackPlugin = require("uglifyjs-webpack-plugin")
+module.exports = {
+    plugins: [
+        new UglifyjsWebpackPlugin()
+    ]
+}
+```
+
+# 热部署
+
+不需要打包后再调试
+
+建议关闭代码压缩插件, 再使用
+
+## 安装
+
+```shell
+cnpm install webpack-dev-server -D
+```
+
+## 配置
+
+```js
+const UglifyjsWebpackPlugin = require("uglifyjs-webpack-plugin")
+module.exports = {
+    devServer: {
+        // 指定监听的文件夹
+        contentBase: './dist',
+        // 是否实时监听
+        inline: true,
+        port: 8000
+    }
+}
+```
+
+```json
+// 在package.json中配置脚本命令
+// open参数, 会自动打开浏览器
+"serve": "webpack-dev-server --open"
+// webpack5
+"serve": "webpack  serve --mode development --open"
+```
+
+# 配置文件区分环境
+
+## 安装
+
+该插件可以将配置文件合并
+
+```shell
+cnpm install webpack-merge -D
+```
+
+## 使用
+
+创建一个config文件夹, 并编写三个配置文件
+
+### webpack.base.config.js
+
+该配置文件放公共的配置
+
+```js
+module.exports = {
+output: {
+        // 需要修改为 '../dist'
+    	// 如果config文件夹创建在src下改为'../../dist', 如果和src同级, 改为'../dist'
+        path: path.resolve(__dirname,'../../dist'),
+        filename: 'bundle.js'
+    }
+}
+```
+
+### webpack.prod.config.js
+
+该配置文件放生产环境的配置
+
+```js
+// 该插件在生产环境打包时, 才需要用到
+const UglifyjsWebpackPlugin = require("uglifyjs-webpack-plugin")
+const WebpackMerge = require("webpack-merge")
+const baseConfig = require("webpack.base.config")
+// 使用webpack-merge合并配置文件
+module.exports = WebpackMerge(baseConfig, {
+    plugins: [
+        new UglifyjsWebpackPlugin()
+    ],
+})
+```
+
+### webpack.dev.config.js
+
+该配置文件放开发环境的配置
+
+```js
+const WebpackMerge = require("webpack-merge")
+const baseConfig = require("webpack.base.config")
+
+module.exports = WebpackMerge(baseConfig, {
+    devServer: {
+        contentBase: './dist',
+        // 是否实时监听
+        inline: true,
+        port: 8000
+    }
+})
+```
+
+### 配置脚本
+
+注意配置文件的路径
+
+```json
+"build": "webpack --mode production --config ./config/webpack.prod.config.js",
+"serve": "webpack serve --mode development --open --config ./config/webpack.dev.config.js"
 ```
 
