@@ -573,72 +573,24 @@ this.$ajax.post("http://localhost:8000/test/name", obj).then(function (res){
 })
 ```
 
-# 路由
-
-## 使用
-
-路由中配置
-
-```js
-{
-    path: '/about/:msg',
-    name: 'About',
-    component: about
-}
-```
-
-### 路径传值
-
-方式一
-
-```html
-<!-- to为要跳转的页面路径 -->
-<router-link to="/about/hello">About</router-link>
-```
-
-方式二
-
-```js
-// push传参为要跳转的页面路径
-this.$router.push("/about")
-// 传值, name指的是路由中配置的name属性, 不能使用path
-this.$router.push({name: "About", params:{msg: "hello"}})
-```
-
-取值
-
-```js
-$route.params.msg
-```
-
-### 参数传值
-
-方式一
-
-```html
-<!-- to为要跳转的页面路径 -->
-<router-link to="/about?msg=hello">About</router-link>
-```
-
-方式二
-
-```js
-// 传值, path指的是路由中配置的path属性, 也可以使用name
-this.$router.push({path: "/about", query:{msg: "hello"}});
-```
-
-取值
-
-```js
-$route.query.msg
-```
-
-# 运行/打包
+#  运行/打包
 
 ```shell
 npm run serve  # 运行
 npm run build  # 打包
 ```
+
+## 分包机制
+
+vue在打包时, 考虑到单个js文件过大, 用户在使用时可能加载的时间较长, 所以对js文件进行了分包
+
+vue-cli2
+
+分成了三个js
+
+- app.xxx.js  包含了业务逻辑代码
+- vendor.xxx.js  包含了第三方依赖包的代码
+- manifest.xxx.js   为打包的代码做底层支撑
 
 # 集成
 

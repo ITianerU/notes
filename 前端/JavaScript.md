@@ -1,8 +1,6 @@
-# 基础用法
+# 块级作用域
 
-## 块级作用域
-
-### var
+## var
 
 var没有块级作用域, 在代码块外也可以使用
 
@@ -13,7 +11,7 @@ var没有块级作用域, 在代码块外也可以使用
 console.log(name)  // 在代码块外也可以访问
 ```
 
-#### 需要使用闭包解决问题
+### 需要使用闭包解决问题
 
 ```js
 // 给每个按钮绑定点击事件, 每个按钮点击, 在控制台打印其位置
@@ -32,7 +30,7 @@ for(var i=0; i<btns.length; i++){
 }
 ```
 
-### let
+## let
 
 let有作用域
 
@@ -46,7 +44,7 @@ for(let i=0; i<btns.length; i++){
 }
 ```
 
-## 对象
+# 对象
 
 new的内部执行过程
 
@@ -79,30 +77,65 @@ jack.say()
 Person.prototype.run = function(){}
 ```
 
-## 函数执行方式
-
-## 方式一
+# this
 
 ```js
-function sum(a, b){
-    // 这种方式, this指的是window对象
-    console.log(this);
-    return a+b
+function sum(){
+    // this, 函数内部的this指代的是window对象
+    console.log(this)
 }
-sum(1,2)
-```
+() => {
+    // 匿名函数内部没有this, 会向上级找, 直到找到this, 这里的this也找到的是window对象
+    console.log(this)
+}
 
-## 方式二
-
-```js
-function Cat(){
-    this.sum = function(a, b){
-        // 这种方式, this指的是创建的对象实例c
-        console.log(this);
-        return a+b
+function Person() {
+    this.name = "老王"
+    function sum(){
+        // 构造方法内部中的this, 都指向构造方法创建时的实例
+        console.log(this)
+    }
+    this.fun = () => {
+        // 构造方法内部中的this, 都指向构造方法创建时的实例
+        console.log(this)
     }
 }
-let c = new Cat();
-cat.sum(1,2)
+
+let obj = {
+    aaa() {
+        setTimeout(function sum(){
+            // this, 函数内部的this指代的是window对象
+            console.log(this)
+        }, 100)
+        setTimeout(() =>{
+            // 匿名函数内部没有this, 会向上级找, 这里向上一级找到的是obj对象
+            console.log(this)
+        }, 100)
+    }
+}
+```
+
+# 页面跨域传值
+
+```js
+// 获取跨域页面窗口的window对象
+let win = document.getElementById("iframe").contentWindow
+// 给指定域传值
+win.postMessage("value", "跨域的窗口的域名")
+```
+
+# 原型
+
+## 添加属性
+
+```js
+function Obj(){}
+Object.defineProperty(Obj, 属性名, 属性描述{
+                      value: 123,
+                      writable: true|false  // 属性的值是否可以被重写
+                      enumerable: true|false  // 属性的值是否可以被枚举
+                      configurable: true|false  // 是否可以删除, 或这修改属性的描述
+                      })
+obj.property.属性名 = 值
 ```
 

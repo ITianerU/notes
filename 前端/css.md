@@ -2,6 +2,7 @@
 * 外部 引入外部css文件
 * 内部 写在html文件`<head>`标签内
 * 内联 写在标签内  
+* VUE脚手架中引入在<Style>@import "xxx.css"</style>
 
 优先级： 内联>内部>外部  
 使用!import 可将优先级提升至最高  
@@ -38,7 +39,7 @@
     在元素前插入新内容
     - :after
     在元素后插入新内容
-***    
+***
 # 样式
 * 背景 （不可被继承）
     - 背景色 background-color 
@@ -103,9 +104,9 @@
 * 列表
     - 列表项标志: list-style-type
     - 列表项图像: list-style-image
-*** 
+***
 
-# 框模型
+# 盒子模型
 ![box][box-model]
 * 外边距 margin  
   两个相邻标签的外边距会合并，取最大值
@@ -124,8 +125,8 @@
     - hidden 隐藏内容   
     - visible 显示在框外 
     - auto 自动处理溢出的内容
-*** 
-  
+***
+
 # 定位
 * position
     - 相对定位 relative  
@@ -147,9 +148,9 @@
   margin:auto
 * position实现左右对齐  
   position：absolute
-*** 
-  
- 
+***
+
+
 # 布局(flex):弹性容器
 display：flex   
 * justify-content: 主轴
