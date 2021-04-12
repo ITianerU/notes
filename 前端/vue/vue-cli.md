@@ -128,3 +128,21 @@ module.exports = {
 };
 ```
 
+## 配置访问路径别名
+
+在html中使用, 需要在路径前加~
+
+```js
+const path = require("path");  // 引入path
+function resolve(dir) {    // 封装一个通用方法
+    return path.resolve(__dirname, dir);
+}
+
+module.exports = {
+    chainWebpack: config => {
+        config.resolve.alias
+            .set('views', resolve('src/views'))
+    }
+}
+```
+

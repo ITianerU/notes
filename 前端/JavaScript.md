@@ -139,3 +139,197 @@ Object.defineProperty(Obj, 属性名, 属性描述{
 obj.property.属性名 = 值
 ```
 
+# Promise
+
+异步操作, 解决回调地狱的问题
+
+## 例
+
+- 未使用Promise
+
+
+```js
+// setTimeout为异步操作, 不使用Promise, 在嵌套多层时, 会出现回调地狱
+setTimeout(() => {
+    console.log("hello js")
+    console.log("hello js")
+    console.log("hello js")
+    
+    setTimeout(() => {
+        console.log("hello vue")
+        console.log("hello vue")
+        console.log("hello vue")
+        
+        setTimeout(() => {
+            console.log("hello html")
+            console.log("hello html")
+            console.log("hello html")
+        },1000)
+    },1000)
+},1000)
+```
+
+- 使用Promise
+
+  链式调用,  catch只能有一个, 需要放到最后
+
+  **方式一**
+
+```js
+// resolve 成功   reject 失败
+new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve()
+        // reject()
+    },1000)
+}).then(() => {
+    console.log("hello js")
+    console.log("hello js")
+    console.log("hello js")
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve()
+        },1000)
+    })
+}).then(() => {
+    console.log("hello vue")
+    console.log("hello vue")
+    console.log("hello vue")
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve()
+        },1000)
+    })
+}).then(() => {
+    console.log("hello html")
+    console.log("hello html")
+    console.log("hello html")
+}).cathc(err => {
+    console.log("err")
+})
+```
+
+- **方式二**
+
+  then()和catch()合并
+
+```js
+// resolve 成功   reject 失败
+new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve()
+        // reject()
+    },1000)
+}).then(() => {
+    console.log("hello js")
+    console.log("hello js")
+    console.log("hello js")
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve()
+        },1000)
+    })
+}, (err) => {
+    
+})
+```
+
+## 简写
+
+- 未简写
+
+```js
+new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve("hello")
+    },1000)
+}).then((data) => {
+    console.log(data)
+    // 未简写
+    return new Promise((resolve, reject) => {
+        resolve(data + "老王")
+    })
+}).then((data) => {
+    console.log(data)
+    // 未简写
+    return new Promise((resolve, reject) => {
+        reject()
+    })
+}).then((data) => {
+    console.log(data)
+}).catch(() => {
+    console.log("err")
+})
+```
+
+- 简写
+
+```js
+new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve("hello")
+    },1000)
+}).then((data) => {
+    console.log(data)
+    // 简写
+    return Promise.resolve(data + "老王")
+}).then((data) => {
+    console.log(data)
+    // 简写
+    return Promise.reject(data + ", 吃了么")
+}).then((data) => {
+    console.log(data)
+}).catch(() => {
+    console.log("err")
+})
+```
+
+- 再简写
+
+```js
+new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve("hello")
+    },1000)
+}).then((data) => {
+    console.log(data)
+    // 再简写
+    return data + "老王"
+}).then((data) => {
+    console.log(data)
+    // 再简写	
+    throw "err msg"
+}).then((data) => {
+    console.log(data)
+}).catch(() => {
+    console.log("err")
+})
+```
+
+## 等待全部任务完成
+
+```js
+// Promise.all()接收一个Promise数组
+Promise.all([new Promise(((resolve, reject) => {
+    setTimeout(() => {
+        resolve("1")
+    }, 5000)
+})), new Promise(((resolve, reject) => {
+    setTimeout(() => {
+        resolve("2")
+    }, 7000)
+})), new Promise(((resolve, reject) => {
+    setTimeout(() => {
+        resolve("3")
+    }, 10000)
+}))]).then((results) => {
+	// results是上面每一个Promise数组的结果
+    console.log(results);
+}).catch((err) => {
+    console.log(err)
+})
+```
+
+
+
+  
