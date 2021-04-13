@@ -281,6 +281,12 @@
             	}
             }
             */
+            // 闭包, 返回一个函数, 不会缓存结果
+            realPrice: function(){
+                return function(num){
+        			this.price * num
+    			};
+            }
         }
     })
 </script>
