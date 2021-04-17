@@ -16,11 +16,24 @@
 npm install vuex
 ```
 
+# 目录结构
+
+- stroe
+  - index.js
+  - actions.js
+  - mutations.js
+  - getters.js
+  - modules
+    - cart.js    # 购物车模块
+    - products.js   # 产品模块
+
 # 使用
 
 ## 引用
 
 在根目录下创建 stroe/index.js
+
+注: 建议对state, getter, mutations, action, modules拆分成不同的js文件
 
 ```js
 import Vuex from "vuex"
@@ -154,7 +167,7 @@ computed: mapGetters({
 })
 ```
 
-## mutation
+## mutations
 
 用于修改数据, 只能同步修改
 
@@ -227,12 +240,13 @@ import {mapMutations} from 'vuex';
 
 import {mapGetters} from 'vuex';
 
-#### action  提交修改
+## action 
 
-可异步变更数据
+可异步变更数据, 需要与mutation配合
+
+### 创建
 
 ```js
-import Vuex from 'vuex';
 export default new Vuex.Store({
     state: {
         messages: []
@@ -243,7 +257,8 @@ export default new Vuex.Store({
         }
     },
     actions: {
-        getMessages(context) {
+        // context只Store对象, 在action中在调用mutation
+        getMessages(context, ...) {
             fetch(url).then(
             	(res) => res.json()
             ).then(
@@ -256,35 +271,37 @@ export default new Vuex.Store({
 })
 ```
 
+### 调用
+
 ```js
 // 调用
-this.$store.dispatch("getMessages")
+this.$store.dispatch("getMessages", ...)
 ```
 
-#### action辅助函数
+### action辅助函数
 
 ```js
 // 用法与前面相同
 import {mapActions} from 'vuex';
 ```
 
-#### Promise
+### Promise
 
 控制异步请求结束后执行的代码
 
 ```js
 actions: {
-        getMessages(context) {
-            // 添加return, 返回promise对象
-            return fetch(url).then(
-            	(res) => res.json()
-            ).then(
-                (data) => {
-                    context.commit('addMessages', data.messages)
-                }
-            )
-        }
+    getMessages(context) {
+        // 添加return, 返回promise对象
+        return fetch(url).then(
+            (res) => res.json()
+        ).then(
+            (data) => {
+                context.commit('addMessages', data.messages)
+            }
+        )
     }
+}
 ```
 
 ```js
@@ -292,5 +309,52 @@ actions: {
 this.$store.dispatch("getMessages").then(
 	// 确保异步加载完成,执行这里的代码
 )
+```
+
+## modules
+
+模块化, 防止state太大导致难以维护, 对state划分模块
+
+### 创建
+
+```json
+const modulesA = {
+    state:{},
+    // mutations不要重复    
+    mutations:{},
+    // actions不要重复   
+    actions: {
+        // context指的是, 当前的modoule对象, 只能使用自己的模块的mutations
+        xxx(context){
+            // 拿到跟节点的getters, state 
+            context.rootGetters
+            context.commit("")
+        }
+    },
+    // getters不要重复 
+    getters: {
+        // rootState为主state
+        getCount(state, getters, rootState){
+            return 
+        }
+    }
+}
+
+state:{},
+mutations:{},
+actions: {},
+getters: {},
+modules: {
+    a: modulesA
+}
+```
+
+### 调用
+
+```js
+// 获取属性
+this.$store.state.a.xxx
+// mutations, actions, getters 和之前的用法相同, 他会优先在主mutations中找, 找不到再去modules中找
+this.$store.commit("xxx")
 ```
 

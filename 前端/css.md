@@ -1,4 +1,5 @@
 # 引入样式
+
 * 外部 引入外部css文件
 * 内部 写在html文件`<head>`标签内
 * 内联 写在标签内  
@@ -6,7 +7,7 @@
 
 优先级： 内联>内部>外部  
 使用!import 可将优先级提升至最高  
-***
+
 # 选择器
 * id选择器 #id
 * 类选择器 .class
@@ -39,7 +40,6 @@
     在元素前插入新内容
     - :after
     在元素后插入新内容
-***
 # 样式
 * 背景 （不可被继承）
     - 背景色 background-color 
@@ -104,10 +104,7 @@
 * 列表
     - 列表项标志: list-style-type
     - 列表项图像: list-style-image
-***
-
 # 盒子模型
-![box][box-model]
 * 外边距 margin  
   两个相邻标签的外边距会合并，取最大值
 * 边框 border
@@ -125,33 +122,35 @@
     - hidden 隐藏内容   
     - visible 显示在框外 
     - auto 自动处理溢出的内容
-***
-
 # 定位
 * position
     - 相对定位 relative  
       相对本身应存在的位置定位  
       占空间
+      
     - 绝对定位 absolute  
       相对父标签定位（父标签需要设置position属性为relative/absolute/fixed）
       不占空间，不能和float同时使用
+      
     - 浮动定位 fixed  
       相对与浏览器视窗定位 
-    - 混合 sticky  
-      relative和fixed混合，在屏幕范围内是relative，超出屏幕为fixed
+      
+    - 混合 sticky(兼容性差)  
+      relative和fixed混合，表现为, 滑动到某一位置时, 悬浮, 停止滑动
+      
+      需要配合top | bottom | left | right 使用
+      
     - 层叠 z-index
       需配合position属性一起使用     
-***
-
 # 对齐
 * margin实现水平对齐  
   margin:auto
 * position实现左右对齐  
   position：absolute
-***
+# flex布局
 
+## 布局(flex):弹性容器
 
-# 布局(flex):弹性容器
 display：flex   
 * justify-content: 主轴
     - flex-start： 居左对齐
@@ -183,8 +182,7 @@ display：flex
     - space-between: 位于两端
     - space-around: 均匀分布，中间间距为两端距离的2倍
     - space-evenly: 均匀分布，中间间距与两端距离相同
-***
-# 布局(flex):子元素样式
+## 布局(flex):子元素样式
 * flex-basis：相当于width，比width优先级高
 * flex-grow：分配剩余空间
 * flex-shrink：子元素宽度和超出父元素宽度，该属性设置各个子元素的压缩比例
@@ -192,5 +190,103 @@ display：flex
     - 0：不压缩
     - N：压缩比例，数字越大，压缩比例越大
 
-    
-[box-model]:data:image/gif;base64,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
+# 高级用法
+
+## 定义变量
+
+```css
+/* :root为跟节点 */
+:root{
+    --color-text: #666;
+    --font-size: 14px;
+}
+```
+
+## 使用变量
+
+```css
+body{
+    color: var(--color-text)
+}
+```
+
+
+
+# 通用
+
+## normalize.css
+
+- **保留有用的浏览器默认样式**而不是像一些初始化代码一样删除它们
+- **规范化**大部分HTML元素
+- **更正**浏览器自身的**bug**并保证各**浏览器的一致性**
+- 用一些小技巧**优化CSS可用性**
+- 用注释和详细的文档来**解释代码**
+
+### 安装
+
+从github上获取最新版本
+
+## base.css
+
+基本样式
+
+```css
+@import "normalize.css";
+
+:root {
+  --color-text: #666;
+  --color-high-text: #ff5777;
+  --color-tint: #ff8198;
+  --color-background: #fff;
+  --font-size: 14px;
+  --line-height: 1.5;
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-font: "Helvetica Neue",Helvetica,"PingFang SC","Hiragino Sans GB","Microsoft YaHei", "微软雅黑",Arial,sans-serif;
+  user-select: none; /* 禁止用户鼠标在页面上选中文字/图片 */
+  -webkit-tap-highlight-color: transparent;
+  background: var(--color-background);
+  color: var(--color-text);
+  width: 100vw;
+}
+
+a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.clear-fix {
+  zoom: 1;
+}
+
+.clear-fix::after {
+  clear: both;
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+}
+
+.left {
+  float: left;
+}
+
+.right {
+  float: right;
+}
+```
+
+
+
+
+

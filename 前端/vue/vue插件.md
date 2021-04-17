@@ -581,30 +581,6 @@ new Vue({
   }
   ```
 
-# Ajax
-
-vue实现ajax使用axios插件
-
-安装
-
-```
-yarn add axios
-```
-
-引用
-
-```js
-~ main.js  全局注册
-improt axios from 'axios'  //导入
-Vue.prototype.$ajax=axios  //$ajax为变量名
-```
-
-使用
-
-```js
-this.$ajax.get(url).then(function (res){})
-```
-
 
 # 生命周期
 
@@ -812,6 +788,77 @@ changeLanguage(lang) {
     this.$i18n.locale = lang;
     this.langVisible = false
 }
+```
+
+# better-scroll
+
+解决移动端（已支持 PC）各种滚动场景的插件
+
+解决原生滚动条, 滑动时卡顿的问题
+
+## 安装
+
+```bash
+cnpm install -S better-scroll
+```
+
+## 使用
+
+### html
+
+```html
+<!-- 
+	wrapper为需要滚动的区域, 名称可以随意起
+	wrapper子节点有且只有一个节点, 子节点内部随意
+-->
+<div class="wrapper">
+	<ul>
+        <li></li>
+        ...
+    </ul>
+</div>
+```
+
+### css
+
+```css
+.wrapper{
+    overflow: hidden;
+    height: 500px;
+}
+```
+
+### js
+
+```js
+import BScroll from '@better-scroll/core'
+// 需要在生命周期mounted中执行
+let bs = new BScroll('.wrapper', {})
+```
+
+## 事件
+
+### 滚动
+
+```js
+// 1. probeType 为 0，在任何时候都不派发 scroll 事件，
+// 2. probeType 为 1，仅仅当手指按在滚动区域上，每隔 momentumLimitTime 毫秒派发一次 scroll 事件，
+// 3. probeType 为 2，仅仅当手指按在滚动区域上，一直派发 scroll 事件，
+// 4. probeType 为 3，任何时候都派发 scroll 事件，包括调用 scrollTo 或者触发 momentum 滚动动画
+const bs = new BScroll(".wrapper", {
+    "probeType": 3
+})
+bs.on('scroll', (pos) => {
+    console.log(pos)
+})
+```
+
+## 封装
+
+将需要滚动的区域封装成一个vue组件, 可以防止在要替换插件时, 代码和插件耦合度太高, 导致代码难以修改的问题
+
+```vue
+<
 ```
 
 

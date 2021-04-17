@@ -540,43 +540,35 @@ this.$refs("子组件的ref属性").property
 </script>
 ```
 
-------
+# 消息总线
 
-====================**下面的部分需要使用脚手架**=================
-
-# axios
-
-vue推荐使用axios发送ajax请求
-
-## 安装
-
-```js
-npm install -S axios
-```
+可以跨组件传输数据, 类似发布订阅模式, 一个组件发布数据, 其他订阅的组件的都会收到该数据
 
 ## 配置
 
-在main.js中添加
-
 ```js
-import axios from 'axios'
-Vue.prototype.$ajax=axios
+// 在mani.js配置
+Vue.prototype.$bus = new Vue()
 ```
 
-## 使用
+## 发布
 
 ```js
-this.$ajax.get("http://localhost:8000/test/str").then(function(res){
-    that.msg = res
-})
+methods: {
+    test(){
+        this.$bus.$emit("haha", 123)
+    }
+}
 ```
 
+## 订阅
+
 ```js
-let obj = new URLSearchParams()
-obj.append("name", this.name)
-this.$ajax.post("http://localhost:8000/test/name", obj).then(function (res){
-    console.log(res);
-})
+created() {
+    this.$bus.$on("haha", function (res){
+        console.log(res);
+    })
+}
 ```
 
 #  运行/打包
