@@ -571,6 +571,30 @@ created() {
 }
 ```
 
+# mixin
+
+混入, 将一个文件的代码混入到vue实例代码中
+
+```js
+export const testmixin = {
+  created(){
+    this.$bus.$on("haha", function (){
+      console.log("home测试成功");
+    })
+  }
+}
+```
+
+```js
+// 将生命周期函数created混入
+export default {
+  name: 'Home',
+  mixins: [testmixin],
+}
+```
+
+
+
 #  运行/打包
 
 ```shell
