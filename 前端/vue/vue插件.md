@@ -857,8 +857,84 @@ bs.on('scroll', (pos) => {
 
 将需要滚动的区域封装成一个vue组件, 可以防止在要替换插件时, 代码和插件耦合度太高, 导致代码难以修改的问题
 
-```vue
-<
+# fastclick
+
+解决移动端click事件300毫秒延迟响应的问题
+
+## 安装
+
+```js
+cnpm install -S fastclick
+```
+
+## 注册插件
+
+```js
+import FastClick from 'fastclick'
+Vue.use(FastClick)
+// 全局使用
+FastClick.attach(document.body)
+```
+
+# Vue-Lazyload
+
+图片懒加载插件
+
+## 安装
+
+```js
+cnpm install Vue-Lazyload -S
+```
+
+## 注册插件
+
+```js
+import VueLazyload from 'Vue-Lazyload'
+Vue.use(Vue-VueLazyload)
+// 带参数注册
+Vue.use(Vue-VueLazyload, {
+    error: '加载失败的图片',
+    loading: '加载中的图片',
+    attempt: 1   // 尝试加载的次数
+})
+```
+
+## 使用
+
+```html
+<img v-lazy="图片路径"></img>
+```
+
+# postcss-ps-to-viewport
+
+将ps转换成vw.vh等单位, 适配不同大小的屏幕的移动端, 在编译/打包时使用
+
+## 安装
+
+```
+cnpm install -D postcss-ps-to-viewport
+```
+
+## 配置
+
+在根目录新建一个postcss.config.js
+
+```js
+module.exports = {
+    plugins: {
+        autoprefixer: {},
+        "postcss-px-to-viewport": {
+            viewportWidth: 375, // 视窗的宽度，对应的是我们设计稿的宽度.
+            viewportHeight: 667, // 视窗的高度，对应的是我们设计稿的高度.(也可以不配置)
+            unitPrecision: 5, // 保留几位小数，指定`px`转换为视窗单位值的小数位数（很多时候无法整除）
+            viewportUnit: 'vw', // 指定需要转换成的视窗单位，建议使用vw
+            selectorBlackList: ['tab-bar', 'tab-bar-item','shopping-cart-bottom-bar', 'ignore'], // 指定不需要转换的类, 类是指css选择器的class, 也可以指定ignore类, 在不想转换的html上, 加上ignore, 也可以指定正则, 或者以某个字符串开始(tab, 能匹配tab-bar)
+            minPixelValue: 1, // 小于或等于`1px`不转换为视窗单位.
+            mediaQuery: false // 允许在媒体查询中转换`px`,
+            exclude: []   // 指定要忽略的文件, value为正则
+        },
+    }
+}
 ```
 
 

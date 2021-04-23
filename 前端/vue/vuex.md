@@ -153,15 +153,13 @@ getters: {
 }
 ```
 
-
-
 ### getter辅助函数
 
 ```js
 import {mapGetters} from 'vuex';
-// 数组写法
-computed: mapGetters(["name"])
-// 对象写法
+// 数组写法 value为vuex中的getters的名
+computed: ...mapGetters(["name"])
+// 对象写法, key为计算属性的名, value为vuex中的getters的名
 computed: mapGetters({
     name: 'name'
 })
@@ -283,6 +281,9 @@ this.$store.dispatch("getMessages", ...)
 ```js
 // 用法与前面相同
 import {mapActions} from 'vuex';
+
+
+methods:{...mapActions(['name'])}
 ```
 
 ### Promise

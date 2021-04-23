@@ -593,6 +593,36 @@ export default {
 }
 ```
 
+# 自定义插件
+
+在main.js中使用Vue.use() 注册插件
+
+```js
+// 将组件做成插件
+import Toast from 'Toast.vue'
+const install = Vue => {
+	if (install.installed){
+    	return;
+    }
+    install.installed = true;
+    const toastConstructor = Vue.extend(Toast)
+    const toast = new toastConstructor()
+    toast.$mount(document.createElement('div'))
+    document.body.appendChild(toast.$el)
+    Object.defineProperties(Vue.prototype, {
+        $toast: {
+            get(){
+                return toast;
+            }
+        }
+    })
+    // 或者使用这个
+    // Vue.prototype.$toast = toast
+}
+
+export default install
+```
+
 
 
 #  运行/打包
@@ -617,3 +647,9 @@ vue-cli2
 # 集成
 
 将打包后的项目放入到Java项目静态资源文件目录下
+
+# 部署
+
+## 部署到nginx
+
+打包后, 将dist文件夹下的文件, 全部拷贝的到nginx中的html文件夹下
