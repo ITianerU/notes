@@ -69,6 +69,7 @@ npm run dev
 ```shell
 npm install -g @vue/cli
 cnpm install -g @vue/cli
+yarn global add @vue/cli
 ```
 
 ## 图形界面

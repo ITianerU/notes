@@ -142,3 +142,9 @@ send 消息
 netsh winsock reset
 ```
 
+### linux子系统安装
+
+```
+https://docs.microsoft.com/zh-cn/windows/wsl/install-win10#step-4---download-the-linux-kernel-update-package
+```
+
