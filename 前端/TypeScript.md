@@ -388,3 +388,33 @@ class coder implements Person{
 ```
 
 # 泛型
+
+具体是什么类型, 由调用的人去决定
+
+## 泛型函数
+
+```tsx
+// T 表示泛型
+function getData<T>(value:T):T{
+    return value
+}
+// 调用时, 决定数据类型
+getData<number>(123);
+```
+
+## 泛型类
+
+```tsx
+class MinClass<T>{
+    public list:T[] = [];
+    push(value:T):void{
+        this.list.push(value);
+    }
+    getFirst():T{
+        return this.list[0];
+    }
+}
+// 指定类的泛型
+let minClass = new MinClass<Number>();
+```
+
