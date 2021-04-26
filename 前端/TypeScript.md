@@ -418,3 +418,234 @@ class MinClass<T>{
 let minClass = new MinClass<Number>();
 ```
 
+## 泛型接口
+
+### 函数类型接口
+
+```typescript
+interface sendMsg{
+    <T>(id:T):void;
+}
+
+class Email{
+    sendEmail:sendMsg = function <T>(id:T):T{
+        return id;
+    }
+}
+let email = new Email();
+// 使用时再确定类型
+email.sendEmail<string>("1234")
+```
+
+### 类类型接口
+
+```tsx
+// 定义泛型接口
+interface Animal<T>{
+    eat(name: T):T
+}
+// 实现泛型接口时, 再指定类型
+class Person implements Animal<string>{
+    eat(name: string): string {
+        return "eat";
+    }
+}
+```
+
+# 命名空间
+
+多人协作开发时, 容易造成命名冲突, 使用命名空间避免冲突
+
+```typescript
+namespace A{
+    // 如果想在命名空间外部使用, 需要通过export暴露出来
+    export class Person{
+        eat():void{
+            console.log("吃饭")
+        }
+    }
+}
+namespace B{
+    export class Person{
+        
+    }
+}
+```
+
+## 导入
+
+```typescript
+// 导入命名空间
+import {A} from "./index"
+
+let p = new A.Person()
+p.eat()
+```
+
+# 装饰器
+
+## 类装饰器
+
+在不修改原有类的情况下, 为类增加功能
+
+### 普通装饰器
+
+```typescript
+// target为被装饰的类
+function run(target:any){
+    // 通过装饰器扩展方法
+    target.prototype.run = function ():void{
+        console.log("跑");
+    }
+}
+
+// 使用装饰器
+@run
+class Person{
+    constructor() {
+    }
+    eat(){
+
+    }
+}
+// 调用装饰器添加的方法
+let person:any = new Person();
+person.run()
+```
+
+### 装饰器工厂
+
+带参数的装饰器
+
+```typescript
+function decoratorFactory(params:string){
+    // target为被装饰的类
+    return function (target:any) {
+        if (params == "run") {
+            target.prototype.run = function () {
+                console.log("跑")
+            }
+        } else if (params == "eat") {
+            target.prototype.eat = function () {
+                console.log("吃")
+            }
+        }
+    }
+}
+
+// 指定参数
+@decoratorFactory("run")
+class Person{
+    constructor() {
+    }
+}
+
+let person:any = new Person();
+person.run()
+```
+
+### 包装类
+
+```typescript
+function decorator(target:any){
+    // 返回一个新类, 继承被装饰的类
+    return class extends target{
+        constructor() {
+            super();
+        }
+    }
+}
+@decorator
+class Person{
+}
+```
+
+## 属性装饰器
+
+```typescript
+// params传的值
+function decorator(params: any){
+    // target被装饰的类, attr被装饰的属性
+    return function (target:any, attr: any){
+        target[attr] = params
+    }
+}
+
+
+class Person{
+    // 装饰属性
+    @decorator("你好")
+    name:string | undefined
+}
+
+let person:any = new Person();
+console.log(person.name);
+```
+
+## 方法装饰器
+
+```typescript
+
+function decorator(){
+    // target 对于静态对象是类的构造函数, 实例成员是类的原型对象
+    // methodsName 方法名称
+    // desc 被装饰的方法
+    return function (target:any, methodsName: any, desc: any){
+        target.run = function (){
+            console.log("跑");
+        }
+        let oMethod = desc.value
+        desc.value = function(...args:any[]){
+            console.log("增加新逻辑");
+            // 调用原方法
+            oMethod.apply(this, args)
+        }
+    }
+}
+
+
+class Person{
+    @decorator()
+    eat(...args:any[]){
+        // 不会再打印, 方法体会被装饰器替换
+        console.log("吃");
+    }
+}
+
+let person:any = new Person();
+person.eat()
+person.run()
+
+```
+
+## 方法参数装饰器(不常用)
+
+```typescript
+function decorator(){
+    // target 对于静态对象是类的构造函数, 实例成员是类的原型对象
+    // methodName 方法名称
+    // paramsIndex 参数在参数列表中的索引
+    return function (target:any, methodName: any, paramsIndex: number){
+        target.run = function (){
+            console.log("跑");
+        }
+    }
+}
+
+
+class Person{
+    eat(@decorator()name:string){
+        // 不会再打印, 方法体会被装饰器替换
+        console.log(name);
+    }
+}
+```
+
+## 装饰器执行顺序
+
+同种类的装饰器多个, 从后到前执行
+
+1. 属性装饰器
+2. 方法装饰器
+3. 方法参数装饰器
+4. 类装饰器

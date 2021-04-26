@@ -15,9 +15,15 @@ vue create -p dcloudio/uni-preset-vue 项目名
 
 ## 配置
 
+### HBuilderX  
+
 运行->运行到小程序模拟器->运行设置->小程序运行配置
 
 填写开发者工具路径(开发者工具的安装目录)
+
+### 微信开发平台
+
+设置->安全->服务端口
 
 ## 测试
 
@@ -29,26 +35,49 @@ app基础配置, 及各先程序配置
 
 # 开发
 
-## 新建页面
+## 全局样式配置
+
+```json
+// pages.json
+{
+	"globalStyle": {
+		"navigationBarTextStyle": "black",    // 导航栏文字颜色  black | white
+		"navigationBarTitleText": "uni-app",  // 标题文字内容
+		"navigationBarBackgroundColor": "#ff5500",  // 导航栏背景色
+		"backgroundColor": "#aaffff",  // 窗口背景色, 需要开启下拉才能看到
+		"enablePullDownRefresh": true ,// 开启下拉
+		"backgroundTextStyle":"light",  // 下拉loading样式 light | dark
+		"onReachBottomDistance": 50, // 页面上拉触底事件触发时, 距离底部的距离
+		"h5": {  // 配置h5
+			"pullToRefresh": {
+				"color":"#555555"
+			}
+		}
+	}
+}
+```
+
+## 页面
+
+### 新建页面
 
 右键点击pages文件夹, 新建页面
 
-## 配置路由
-
-在pages.json下添加(在新建页时, 会自动添加路由)
-
-pages中的第一个页面, 将会显示为首页(进入小程序, 默认显示的页面)
+### 页面样式/路由配置
 
 ```json
-"pages": [
-    {
-        "path": "pages/index/index",  // 页面路径
-        "style": {
-            "navigationBarTitleText": "首页"  // 页面标题
-        },
-        "enablePullDownRefresh": true // 开启页面刷新
-    }
-]
+// pages.json
+{
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+			"path": "pages/index/index",  // 配置路由
+			"style": {
+				"navigationBarTitleText": "uni-app123"
+                // 和全局样式配置基本一样
+			}
+		}
+	]
+}
 ```
 
 ## 配置tabBar
