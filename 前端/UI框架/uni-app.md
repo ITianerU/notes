@@ -80,7 +80,7 @@ app基础配置, 及各先程序配置
 }
 ```
 
-## 配置tabBar
+## tabBar
 
 在pages.json下添加
 
@@ -90,7 +90,7 @@ app基础配置, 及各先程序配置
     "selectedColor": "#3cc51f",  // 选中后的文字颜色
     "borderStyle": "black",   // 边框颜色
     "backgroundColor": "#ffffff",  // 背景颜色
-    "list": [{   // tab 按钮
+    "list": [{   // tab 按钮 list中配置顺序, 代表tab按钮顺序
         "pagePath": "pages/index/index",  // 点击跳转的页面路径
         "iconPath": "static/image/icon_component.png",  // 按钮图标
         "selectedIconPath": "static/image/icon_component_HL.png",  // 选中后的图标
@@ -99,25 +99,24 @@ app基础配置, 及各先程序配置
 }
 ```
 
-list中配置顺序, 代表tab按钮顺序
+## condition
 
-## 全局样式
+在pages.json下添加
 
 ```json
-"globalStyle": {
-    "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "uni-app",
-    "navigationBarBackgroundColor": "#F8F8F8",
-    "backgroundColor": "#F8F8F8",
-    "enablePullDownRefresh": true // 开启下拉刷新
+// 启动模式配置, 仅在开发阶段生效, 用于模拟直达页面的场景
+// 配置后, 会在小程序开发工具编译模式中多出一个选项
+{
+	"condition": {
+		"current": 0,  // 当前激活页面list的索引
+		"list": [{
+			"name": "详情页",    // 模式名称
+			"path": "pages/message/message", // 启动页面, 路径
+			"query": "id=100"  // 启动参数
+		}]
+	}
 }
 ```
-
-
-
-## main.js
-
-入口文件
 
 ## App.vue
 
@@ -162,49 +161,40 @@ methods:{
 
 ### app生命周期
 
-| 函数名            | 说明                                           |
-| :---------------- | :--------------------------------------------- |
-| onLaunch          | 当`uni-app` 初始化完成时触发（全局只触发一次） |
-| onShow            | 当 `uni-app` 启动，或从后台进入前台显示        |
-| onHide            | 当 `uni-app` 从前台进入后台                    |
-| onUniNViewMessage | 对 `nvue` 页面发送的数据进行监听               |
+| 函数名               | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| onLaunch             | 当`uni-app` 初始化完成时触发（全局只触发一次）               |
+| onShow               | 当 `uni-app` 启动，或从后台进入前台显示                      |
+| onHide               | 当 `uni-app` 从前台进入后台                                  |
+| onError              | 当 `uni-app` 报错时触发                                      |
+| onUniNViewMessage    | 对 `nvue` 页面发送的数据进行监听，可参考 [nvue 向 vue 通讯](https://uniapp.dcloud.io/nvue-api?id=communication) |
+| onUnhandledRejection | 对未处理的 Promise 拒绝事件监听函数（2.8.1+）                |
+| onPageNotFound       | 页面不存在监听函数                                           |
+| onThemeChange        | 监听系统主题变化                                             |
 
 ### 页面生命周期
 
-| 函数名                              | 说明                                                         | 平台差异说明                                         | 最低版本 |
-| :---------------------------------- | :----------------------------------------------------------- | :--------------------------------------------------- | :------- |
-| onLoad                              | 监听页面加载，其参数为上个页面传递的数据，参数类型为Object（用于页面传参） |                                                      |          |
-| onShow                              | 监听页面显示。页面每次出现在屏幕上都触发，包括从下级页面点返回露出当前页面 |                                                      |          |
-| onReady                             | 监听页面初次渲染完成。注意如果渲染速度快，会在页面进入动画完成前触发 |                                                      |          |
-| onHide                              | 监听页面隐藏                                                 |                                                      |          |
-| onUnload                            | 监听页面卸载                                                 |                                                      |          |
-| onResize                            | 监听窗口尺寸变化                                             | App、微信小程序                                      |          |
-| onPullDownRefresh                   | 监听用户下拉动作，一般用于下拉刷新                           |                                                      |          |
-| onReachBottom                       | 页面滚动到底部的事件（不是scroll-view滚到底），常用于上拉加载下一页数据。如使用scroll-view导致页面级没有滚动，则触底事件不会被触发 |                                                      |          |
-| onTabItemTap                        | 点击 tab 时触发，参数为Object，具体见下方注意事项            | 微信小程序、百度小程序、H5、App（自定义组件模式）    |          |
-| onShareAppMessage                   | 用户点击右上角分享                                           | 微信小程序、百度小程序、字节跳动小程序、支付宝小程序 |          |
-| onPageScroll                        | 监听页面滚动，参数为Object                                   |                                                      |          |
-| onNavigationBarButtonTap            | 监听原生标题栏按钮点击事件，参数为Object                     | App、H5                                              |          |
-| onBackPress                         | 监听页面返回，返回 event = {from:backbutton、 navigateBack} ，backbutton 表示来源是左上角返回按钮或 android 返回键；navigateBack表示来源是 uni.navigateBack ；详细说明及使用：[onBackPress 详解](https://ask.dcloud.net.cn/article/35120) | App、H5                                              |          |
-| onNavigationBarSearchInputChanged   | 监听原生标题栏搜索输入框输入内容变化事件                     | App、H5                                              | 1.6.0    |
-| onNavigationBarSearchInputConfirmed | 监听原生标题栏搜索输入框搜索事件，用户点击软键盘上的“搜索”按钮时触发。 | App、H5                                              | 1.6.0    |
-| onNavigationBarSearchInputClicked   | 监听原生标题栏搜索输入框点击事件                             | App、H5                                              | 1.6.0    |
-
-### 组件生命周期
-
-```js
-beforeMount(){
-    console.log("在挂在之前被调用");
-},
-    mounted(){
-        console.log("挂载之后被调用");
-        // $nextTick在dom元素渲染完之后,再执行
-        this.$nextTick(function(){
-            // 渲染完毕
-            console.log("ok");
-        })
-    }
-```
+| 函数名                              | 说明                                                         | 平台差异说明                                                 | 最低版本 |
+| :---------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- | :------- |
+| onInit                              | 监听页面初始化，其参数同 onLoad 参数，为上个页面传递的数据，参数类型为 Object（用于页面传参），触发时机早于 onLoad | 百度小程序                                                   | 3.1.0+   |
+| onLoad                              | 监听页面加载，其参数为上个页面传递的数据，参数类型为 Object（用于页面传参），参考[示例](https://uniapp.dcloud.io/api/router?id=navigateto) |                                                              |          |
+| onShow                              | 监听页面显示。页面每次出现在屏幕上都触发，包括从下级页面点返回露出当前页面 |                                                              |          |
+| onReady                             | 监听页面初次渲染完成。注意如果渲染速度快，会在页面进入动画完成前触发 |                                                              |          |
+| onHide                              | 监听页面隐藏                                                 |                                                              |          |
+| onUnload                            | 监听页面卸载                                                 |                                                              |          |
+| onResize                            | 监听窗口尺寸变化                                             | App、微信小程序                                              |          |
+| onPullDownRefresh                   | 监听用户下拉动作，一般用于下拉刷新，参考[示例](https://uniapp.dcloud.io/api/ui/pulldown) |                                                              |          |
+| onReachBottom                       | 页面滚动到底部的事件（不是scroll-view滚到底），常用于下拉下一页数据。具体见下方注意事项 |                                                              |          |
+| onTabItemTap                        | 点击 tab 时触发，参数为Object，具体见下方注意事项            | 微信小程序、支付宝小程序、百度小程序、H5、App（自定义组件模式） |          |
+| onShareAppMessage                   | 用户点击右上角分享                                           | 微信小程序、百度小程序、字节跳动小程序、支付宝小程序         |          |
+| onPageScroll                        | 监听页面滚动，参数为Object                                   | nvue暂不支持                                                 |          |
+| onNavigationBarButtonTap            | 监听原生标题栏按钮点击事件，参数为Object                     | App、H5                                                      |          |
+| onBackPress                         | 监听页面返回，返回 event = {from:backbutton、 navigateBack} ，backbutton 表示来源是左上角返回按钮或 android 返回键；navigateBack表示来源是 uni.navigateBack ；详细说明及使用：[onBackPress 详解](http://ask.dcloud.net.cn/article/35120)。支付宝小程序只有真机能触发，只能监听非navigateBack引起的返回，不可阻止默认行为。 | app、H5、支付宝小程序                                        |          |
+| onNavigationBarSearchInputChanged   | 监听原生标题栏搜索输入框输入内容变化事件                     | App、H5                                                      | 1.6.0    |
+| onNavigationBarSearchInputConfirmed | 监听原生标题栏搜索输入框搜索事件，用户点击软键盘上的“搜索”按钮时触发。 | App、H5                                                      | 1.6.0    |
+| onNavigationBarSearchInputClicked   | 监听原生标题栏搜索输入框点击事件                             | App、H5                                                      | 1.6.0    |
+| onShareTimeline                     | 监听用户点击右上角转发到朋友圈                               | 微信小程序                                                   | 2.8.1+   |
+| onAddToFavorites                    | 监听用户点击右上角收藏                                       | 微信小程序                                                   | 2.8.1+   |
 
 ## 路由
 
@@ -279,5 +269,82 @@ H5端页面刷新之后页面栈会消失，此时`navigateBack`不能返回，�
 uni.navigateBack({
     delta: 2
 });
+```
+
+## 网络请求
+
+```js
+uni.request(Obj)
+```
+
+## 数据缓存
+
+```js
+// 异步
+uni.setStorage({
+	key: "", 
+	data: "",
+    sunccess(res){ 
+    }
+})
+uni.getStorage({
+	key: "", 
+    sunccess(res){
+    }
+})
+uni.removeStorage({
+	key: "", 
+    sunccess(res){
+    }
+})
+// 清理本地数据缓存
+uni.clearStorage()
+// 同步
+uni.setStorageSync(key, alue)
+uni.getStorageSync(key, alue)
+uni.removeStorageSync(key, alue)
+uni.clearStorageSync()
+```
+
+## 媒体
+
+### 图片
+
+#### 上传
+
+```js
+uni.chooseImage({
+    count: 5,   // 最多选择的图片数量
+    sizeType: ["original", "compressed"],  // 原图 , 压缩图
+    sourceType: ["album", "camera"],   // 相册,  相机
+    success(res){  
+    }
+})
+```
+
+#### 预览
+
+```vue
+<html>
+    <imgaes v-for="" @click="preview"></imgaes>
+</html>
+
+<scrupt>
+    export default{
+    	methods: {
+    		preview(){
+    			uni.previewImage({
+                    current: 0,  // 索引
+                    urls: [], // 路径
+                    indicator: "default", // "default" - 底部圆点指示器； "number" - 顶部数字指示器； "none" - 不显示指示器
+                    loop: true, // 是否可以循环
+                    success(res){
+                    }
+                })
+   			}
+    	}
+    }
+</scrupt>
+
 ```
 
