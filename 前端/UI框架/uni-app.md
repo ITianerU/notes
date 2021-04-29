@@ -225,7 +225,7 @@ export default {
 
 ### uni.redirectTo
 
-关闭当前页面，跳转到应用内的某个页面。
+关闭卸载当前页面, 触发onUnload生命周期函数，跳转到应用内的某个页面。
 
 无法跳转与tabBar绑定的页面
 
@@ -355,4 +355,51 @@ uni.chooseImage({
 | #ifdef **APP-PLUS** 需条件编译的代码 #endif              | 仅出现在 App 平台下的代码                                    |
 | #ifndef **H5** 需条件编译的代码 #endif                   | 除了 H5 平台，其它平台均存在的代码                           |
 | #ifdef **H5** \|\| **MP-WEIXIN** 需条件编译的代码 #endif | 在 H5 平台或微信小程序平台存在的代码（这里只有\|\|，不可能出现&&，因为没有交集） |
+
+# uniCloud
+
+## 云函数
+
+### 调用
+
+```js
+uniCloud.callFunction({
+    name: "demo",  // 云函数的方法名
+    success(e) {
+        console.log(that.title)
+    }
+})
+```
+
+## 云数据库
+
+### 组件调用
+
+```vue
+<!-- collection 为表名 -->
+<unicloud-db v-slot:default="{data, loading, error, options}" collection="demo">
+    <view v-if="error">{{error.message}}</view>
+    <view v-else>
+        {{data}}
+    </view>
+</unicloud-db>
+```
+
+### api调用
+
+```js
+// 获取数据库连接
+const db = uniCloud.database()
+exports.main = async (event, context) => {
+	// 获取表对象
+	const collection = db.collection("demo")
+	const res = await collection.limit(2).get()
+	//返回数据给客户端
+	return res
+};
+```
+
+
+
+
 
