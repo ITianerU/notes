@@ -182,3 +182,75 @@ ReactDOM.render(<Demo/>, document.getElementById("app"))
 
 #### state(状态)
 
+有状态的是复杂组件, 没有状态的是简单组件
+
+```jsx
+class Weather extends React.Component{
+    constructor(props) {
+        super(props);
+        // 初始化数据, 类似vue的data
+        this.state = {
+            isHot: false
+        }
+    }
+    render(){
+        return (
+            <h1>今天天气很{this.state.isHot ? "炎热" : "寒冷"}</h1>
+        )
+    }
+}
+```
+
+##### 状态修改
+
+```jsx
+// 不能直接修改, 需要使用api
+this.setState({
+    isHot: !this.state.isHot
+})
+```
+
+
+
+### 事件
+
+#### 方式一(推荐)
+
+```jsx
+class Weather extends React.Component{
+    constructor(props) {
+        super(props);
+        // 定义一个属性, 该属性指向一个方法
+        // this.click 会先在属性中找, 找不到去原型对象上找
+        // 在原型对象上找到click方法之后, 将this绑定到click方法, 生成新的方法
+        // 将新的方法, 赋值给this.click属性
+        this.click = this.click.bind(this)
+    }
+    // 定义一个方法, 该方法是绑定在Weather原型对象上
+    click(){
+        alert("被点击了")
+    }
+    render(){
+        return (
+            // 绑定事件, 绑定的是click属性
+            <h1 onClick={this.click}>今天天气很炎热</h1>
+        )
+    }
+}
+```
+
+#### 方式二(不推荐)
+
+```jsx
+class Weather extends React.Component{
+    render(){
+        return (
+            <h1 id="weather">今天天气很炎热</h1>
+        )
+    }
+}
+ReactDOM.render(<Weather/>, document.getElementById("app"))
+// 渲染后, 获取要绑定的节点的id, 绑定事件
+document.getElementById("weather").addEventListener("click", () => {
+    alert("被点击了")
+});

@@ -330,6 +330,87 @@ Promise.all([new Promise(((resolve, reject) => {
 })
 ```
 
+# 高级函数
 
+## bind
 
-  
+bind函数会使用旧函数生成一个新函数, 并且改变新新函数内部this的指向
+
+```js
+function fn(a, b, c) {
+    console.log(this)
+    console.log("a", a);
+    console.log("b", b);
+    console.log("c", c);
+    return a + b + c;
+}
+// bind函数的第一个参数会作为新函数的this, 剩余的函数会作为旧函数的参数一次传递
+var _fn = fn.bind("这里是新this", 10);
+var ans = _fn(20, 30); // 60
+```
+
+## call  /  apply
+
+call和apply的作用相同, 改变this指向, 只是传参方式不同
+
+### 和bind的区别
+
+bind会生成一个新函数, call  和 apply不会生成新函数, 并且会立即执行函数
+
+### 样例一
+
+```js
+function add(a, b) {
+    console.log(this)
+    return a + b;
+}
+// add方法里的this被替换为 字符串 "这里是新this"
+// apply 函数接收的参数为数组
+console.log(add.apply("这里是新this", [2, 5]));  // 7
+// call 函数接收的参数需要分开传
+console.log(add.call("这里是新this", 2, 5));  // 7
+```
+
+### 样例二
+
+```js
+function demo1() {
+    let t = new this();
+    return t.t
+}
+
+function demo2() {
+    this.t = 10
+}
+// demo1函数的this被替换为函数demo2
+console.log(demo1.apply(demo2))  // 10
+```
+
+### 样例三
+
+```js
+function People(name, age) {
+    this.name = name;
+    this.age = age;
+}
+
+function Student(name, age, grade) {
+    People.call(this, name, age);
+    this.grade = grade;
+}
+
+// 等价为
+function People(t, name, age) {
+    t.name = name;
+    t.age = age;
+}
+
+function Student(name, age, grade) {
+    People(this, name, age);
+    this.grade = grade;
+}
+
+var student = new Student('小明', 21, '大三');
+console.log(student.name + student.age + student.grade); //小明21大三
+```
+
