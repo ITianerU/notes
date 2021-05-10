@@ -137,6 +137,19 @@ const VDOM = (
 	)
 ```
 
+### 注释
+
+```jsx
+render(){
+    // 使用花括号注释
+    return (
+        {/* <h1>hello</h1> */}
+    )
+ }
+```
+
+
+
 # 高级用法
 
 ## 组件
@@ -334,14 +347,14 @@ Person.defaultProps = {
 
 用于快速获取html节点
 
-##### 基础用法
+##### 字符串形式(不推荐)
 
 ```jsx
 class Demo extends React.Component{
     render(){
         return (
             <div>
-                <!-- 绑定ref属性 -->
+                <!-- 绑定ref属性, 此处使用的是字符串, 已经不推荐使用, 存在效率问题 -->
                 <input ref="c" type="text"/>
                 <button onClick={this.click}>点击提示</button>
                 <input ref="b" type="text" onBlur={this.blur}/>
@@ -354,6 +367,66 @@ class Demo extends React.Component{
     }
     blur = () => {
         console.log(this.refs.b.value);
+    }
+}
+```
+
+##### 回调函数形式
+
+###### 内联函数
+
+内联函数会在第一次渲染dom时, 调用一次
+
+在每次dom更新时, 会调用两次, 
+
+没有太大的影响, 可以继续使用
+
+```jsx
+class Person extends React.Component{
+    render(){
+        return (
+            <div>
+                <!-- 
+					ref绑定一个回调函数, 在回调函数中, 给实例对象的一个属性绑定当前节点
+ 					currentNode会传入当前节点
+				-->
+                <input ref={currentNode => this.input1 = currentNode} type="text" />
+                <button onClick={this.click}>按钮</button>
+            </div>
+        )
+    }
+    click = () => {
+		// 从属性中获取
+    	alert(this.input1.value)
+    }
+}
+```
+
+###### class绑定函数
+
+此方法, 解决内联函数的问题, 只会在第一次渲染时, 调用一次
+
+dom更新时, 不会再次调用
+
+```jsx
+class Person extends React.Component{
+    render(){
+        return (
+            <div>
+                <!-- 绑定外部函数 -->
+                <input ref={this.test} type="text" />
+                <button onClick={this.click}>{this.state.isHot}</button>
+            </div>
+
+        )
+    }
+    test = (c) => {
+        this.input1 = c;
+        console.log(c)
+    }
+    click = () => {
+		// 从属性中获取
+    	alert(this.input1.value)
     }
 }
 ```
