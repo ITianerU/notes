@@ -131,7 +131,7 @@ Vue.component("customButton", {
   
   ```html
   // 使用 fata是父组件的data中的数据
-<count-from-number :number="fdata" @methodName="val => fdata = val"></count-from-number>
+  <count-from-number :number="fdata" @methodName="val => fdata = val"></count-from-number>
   ```
 
   ```js
@@ -152,7 +152,6 @@ Vue.component("customButton", {
         }
       })
   ```
-  
 ```html
   <count-from-number :number.sync="fdata"></count-from-number>
 ```
@@ -271,13 +270,12 @@ Vue.component("customButton", {
   ```
   
   ```html
-<!-- v-slot声明变量适用于vue-cli 2.6之后的版本,之前的版本使用slot-scope -->
+  <!-- v-slot声明变量适用于vue-cli 2.6之后的版本,之前的版本使用slot-scope -->
   <user-data :username="username" v-slot="userParam">
       <!-- v-slot声明的变量指代组件中的data对象 -->
   	<p v-if="userParam">{{ userParam.user.username }}</p>
   </user-data>
   ```
-  
 
 #### 自定义事件
 
@@ -433,33 +431,6 @@ component: 组件名
 		xxx: xxx
 	}
 </style>
-```
-
-# SCSS
-
-#### 安装
-
-```shell
-npm install sass-loader --save-dev
-npm install node-sass --save-dev
-```
-
-#### 添加配置
-
-```js
-~ build/webpack.base.conf.js
-在rules下添加
-{
-    test: /\.scss$/,
-    loaders: ['style', 'css', 'sass']
-}
-```
-
-#### 添加属性
-
-```html
-在style标签上添加 lang="scss"
-<sytle scoped lang="scss"></style>
 ```
 
 # Render

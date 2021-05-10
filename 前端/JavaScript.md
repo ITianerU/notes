@@ -414,3 +414,17 @@ var student = new Student('小明', 21, '大三');
 console.log(student.name + student.age + student.grade); //小明21大三
 ```
 
+# 拷贝
+
+## 深拷贝
+
+```js
+let p1 = {
+    name: "老王"
+}
+// 使用展开运算符, 可以深拷贝一个对象
+let p2 = {...p1}
+// 复制的同时, 可以添加或者修改
+let p2 = {...p1, age: 12}
+```
+

@@ -184,6 +184,8 @@ ReactDOM.render(<Demo/>, document.getElementById("app"))
 
 有状态的是复杂组件, 没有状态的是简单组件
 
+##### 复杂写法
+
 ```jsx
 class Weather extends React.Component{
     constructor(props) {
@@ -192,6 +194,22 @@ class Weather extends React.Component{
         this.state = {
             isHot: false
         }
+    }
+    render(){
+        return (
+            <h1>今天天气很{this.state.isHot ? "炎热" : "寒冷"}</h1>
+        )
+    }
+}
+```
+
+##### 简洁写法(推荐)
+
+```jsx
+class Weather extends React.Component{
+    // 不使用构造方法
+    state = {
+        isHot: false
     }
     render(){
         return (
@@ -210,11 +228,143 @@ this.setState({
 })
 ```
 
+#### props(属性)
+
+组件接收的参数, 为只读, 不能修改
+
+##### 基础用法
+
+```jsx
+class Person extends React.Component{
+    render(){
+        // 使用解构赋值
+        cosnt {name, age} = this.props
+        return (
+            <ul>
+                <!-- 使用属性 -->
+                <li>姓名: {name}</li>
+                <li>年龄: {age}</li>
+            </ul>
+        )
+    }
+}
+// 传递属性, 会存到this.props中
+// 传递数字, 需要加{}
+ReactDOM.render(<Person name="老王" age={25}/>, document.getElementById("app"))
+```
+
+##### 高级用法
+
+```jsx
+const p = {name: "老王", age:50}
+// 原生的js不支持展开运算符展开对象
+// 此处是react 和babel 对...进行了重写, 可以展开对象
+// 仅能用于标签属性传递
+ReactDOM.render(<Person {...p} />, document.getElementById("app"))
+```
+
+##### 校验
+
+```jsx
+class Person extends React.Component{
+    // 想要给类加属性, 需要使用静态属性
+    static propTypes = {
+        // 指定数据类型, 是否必填
+        // 版本16不再使用, React.PropTypes, 改为PropTypes
+        name: PropTypes.string.isRequired
+        // 数据类型:
+        // string, number, func
+    }
+}
+// 也可以写在类外部, 不推荐
+Person.propTypes = {
+    name: PropTypes.string.isRequired
+}
+```
+
+##### 默认值
+
+```jsx
+class Person extends React.Component{
+    // 设置属性的默认值
+    static defaultProps = {
+        name: "老王"
+    } 
+}
+// 也可以写在类外部, 不推荐
+Person.defaultProps = {
+    name: "老王"
+}
+```
+
+##### 构造函数接收props
+
+```jsx
+// 很少使用
+class Person extends React.Component{
+    constructor(props) {
+        super();
+        console.log(props);
+    }
+}
+```
+
+##### 函数式组件使用props
+
+```jsx
+// 三大属性, 函数式组件只能使用props
+function Person(props){
+    return (
+        <ul>
+            <li>姓名: {props.name}</li>
+            <li>年龄: {props.age}</li>
+        </ul>
+    )
+}
+// 如何想做约束, 和设置默认值, 只能在外部定义
+Person.propTypes = {
+    name: PropTypes.string.isRequired
+}
+Person.defaultProps = {
+    name: "老王"
+}
+```
+
+#### refs
+
+用于快速获取html节点
+
+##### 基础用法
+
+```jsx
+class Demo extends React.Component{
+    render(){
+        return (
+            <div>
+                <!-- 绑定ref属性 -->
+                <input ref="c" type="text"/>
+                <button onClick={this.click}>点击提示</button>
+                <input ref="b" type="text" onBlur={this.blur}/>
+            </div>
+        )
+    }
+    click = () => {
+        // 获取数据
+        console.log(this.refs.c.value)
+    }
+    blur = () => {
+        console.log(this.refs.b.value);
+    }
+}
+```
+
 
 
 ### 事件
 
 #### 方式一(推荐)
+
+##### 复杂写法
 
 ```jsx
 class Weather extends React.Component{
@@ -228,6 +378,23 @@ class Weather extends React.Component{
     }
     // 定义一个方法, 该方法是绑定在Weather原型对象上
     click(){
+        alert("被点击了")
+    }
+    render(){
+        return (
+            // 绑定事件, 绑定的是click属性
+            <h1 onClick={this.click}>今天天气很炎热</h1>
+        )
+    }
+}
+```
+
+##### 简洁写法(推荐)
+
+```jsx
+class Weather extends React.Component{
+    // 使用箭头函数, 箭头函数没有自己的this, 会去寻找函数外部的this
+    click = () => {
         alert("被点击了")
     }
     render(){
