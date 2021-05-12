@@ -191,6 +191,13 @@ class Demo extends React.Component{
 ReactDOM.render(<Demo/>, document.getElementById("app"))
 ```
 
+#### 卸载组件
+
+```jsx
+// 卸载某一节点下的组件
+ReactDOM.unmountComponentAtNode(document.getElementById("app"))
+```
+
 ### 组件实例三大核心属性
 
 #### state(状态)
@@ -661,5 +668,25 @@ class Demo extends React.Component{
 			)
 		}
 	}
+```
+
+## 生命周期
+
+### 旧版
+
+```jsx
+class Demo extends React.Component{
+    // 创建实例时, 仅调用一次
+    constructor() {super();}
+    // 组件挂载前, 仅调用一次
+    componentWillMount(){}
+    // 初始化渲染, 或者状态更新, 会被调用多次
+    render(){}
+    // 组件完成挂载, 仅调用一次
+	componentDidMount(){}
+    // 组件卸载前, 仅调用一次
+    componentWillUnmount(){}
+}
+
 ```
 
