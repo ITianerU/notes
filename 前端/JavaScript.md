@@ -46,7 +46,7 @@ for(let i=0; i<btns.length; i++){
 
 # 对象
 
-new的内部执行过程
+## new的内部执行过程
 
 - 在内存中开辟一块空间
 - 创建一个空对象
@@ -55,7 +55,7 @@ new的内部执行过程
 - 构造函数执行, 给this添加属性和方法
 - 最后把当前对象返回
 
-创建对象
+## 创建对象
 
 ```js
 // 创建一个构造方法
@@ -69,13 +69,30 @@ let jack = new Person("jack")
 jack.say()
 ```
 
-原型对象
+## 原型对象
 
 ```js
 // Person是一个类, 动态的往类中添加一个方法
 // 已经创建的实例  new Person(), 可以调用这个方法
 Person.prototype.run = function(){}
 ```
+
+## 读取变量的值作为名称
+
+```js
+let a = "name"
+// 将变量的值作为key
+let obj = {
+    [a] : "老王"    // name: "老王"
+}
+// [a]的原理, 上面是下方的简写
+let a = "name"
+let obj = {
+}
+obj[a] = "老王"
+```
+
+
 
 # this
 
@@ -330,9 +347,11 @@ Promise.all([new Promise(((resolve, reject) => {
 })
 ```
 
-# 高级函数
+# 函数
 
-## bind
+## 改变this指向
+
+### bind
 
 bind函数会使用旧函数生成一个新函数, 并且改变新新函数内部this的指向
 
@@ -349,15 +368,15 @@ var _fn = fn.bind("这里是新this", 10);
 var ans = _fn(20, 30); // 60
 ```
 
-## call  /  apply
+### call  /  apply
 
 call和apply的作用相同, 改变this指向, 只是传参方式不同
 
-### 和bind的区别
+#### 和bind的区别
 
 bind会生成一个新函数, call  和 apply不会生成新函数, 并且会立即执行函数
 
-### 样例一
+#### 样例一
 
 ```js
 function add(a, b) {
@@ -371,7 +390,7 @@ console.log(add.apply("这里是新this", [2, 5]));  // 7
 console.log(add.call("这里是新this", 2, 5));  // 7
 ```
 
-### 样例二
+#### 样例二
 
 ```js
 function demo1() {
@@ -386,7 +405,7 @@ function demo2() {
 console.log(demo1.apply(demo2))  // 10
 ```
 
-### 样例三
+#### 样例三
 
 ```js
 function People(name, age) {
@@ -413,6 +432,30 @@ function Student(name, age, grade) {
 var student = new Student('小明', 21, '大三');
 console.log(student.name + student.age + student.grade); //小明21大三
 ```
+
+## 高阶函数
+
+### 概念
+
+- 参数接收一个函数的函数   例: promise,  map, filter
+- 返回值返回一个函数的函数   例: 闭包
+
+### 函数柯里化
+
+函数返回函数, 并且每个函数都接收参数, 最内部的函数对这些参数统一做处理
+
+```js
+function a(a){
+    return function(b){
+        return function(c){
+            return a + b + c;
+        }
+    }
+}
+a(1)(2)(3) // 6
+```
+
+
 
 # 拷贝
 

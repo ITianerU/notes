@@ -431,6 +431,29 @@ class Person extends React.Component{
 }
 ```
 
+###### createRef
+
+官方推荐的形式
+
+```jsx
+class Demo extends React.Component{
+		// React.createRef返回一个容器, 该容器可以存储被ref所标识的节点, 一个容器只能存一个节点
+		myRef = React.createRef()
+		render(){
+			return (
+				<div>
+					<input ref={this.myRef} type="text"/>
+					<button onClick={this.click}>点击提示</button>
+				</div>
+			)
+		}
+		click = () => {
+			// 取值
+			console.log(this.myRef.current.value)
+		}
+	}
+```
+
 
 
 ### 事件
@@ -494,3 +517,149 @@ ReactDOM.render(<Weather/>, document.getElementById("app"))
 document.getElementById("weather").addEventListener("click", () => {
     alert("被点击了")
 });
+```
+
+#### 事件对象
+
+```jsx
+class Demo extends React.Component{
+    render(){
+        return (
+            <div>
+                <!-- 绑定事件 -->
+                <input onBlur={this.blur} type="text"/>
+            </div>
+        )
+    }
+    // 会自动往第一个参数传递事件对象
+    blur = (event) => {
+        // 取值
+        console.log(event.target.value)
+    }
+}
+```
+
+### 受控 / 非受控组件
+
+#### 非受控组件
+
+```jsx
+class Demo extends React.Component{
+		render(){
+			return (
+				<form onSubmit={this.submit}>
+					用户名<input ref={c => this.username = c} type="text" name="username"/>
+					密码<input  ref={c => this.password = c} type="text" name="password"/>
+					<button>登录</button>
+				</form>
+			)
+		}
+		submit = (event) => {
+			// 阻止表单提交的默认行为
+			event.preventDefault()
+			// 取值
+			console.log(this.username.value)
+		}
+	}
+```
+
+#### 受控组件
+
+```js
+class Demo extends React.Component{
+    // 受控组件页面中的输入dom(input), 与state中的值绑定
+    state = {
+        username: "",
+        password: ""
+    }
+    changeUsername = event => {
+        this.setState({
+            username: event.target.value
+        })
+    }
+    changePassword = event => {
+        this.setState({
+            password: event.target.value
+        })
+    }
+    submit = (event) => {
+        // 取值
+        console.log(this.state)
+    }
+    render(){
+        return (
+            <form onSubmit={this.submit}>
+            用户名<input onChange={this.changeUsername} type="text" name="username"/>
+                密码<input  onChange={this.changePassword} type="text" name="password"/>
+                    <button>登录</button>
+    		</form>
+    )
+}
+	}
+```
+
+##### 简化
+
+###### 函数柯里化写法
+
+```jsx
+class Demo extends React.Component{
+    state = {
+        username: "",
+        password: ""
+    }
+	// 使用闭包返回一个函数
+	// 函数返回函数, 并且每个函数都接收参数, 最内部的函数对这些参数统一做处理, 叫做函数柯里化
+    changeFormDate = (name) => {
+        return (event) => {
+            this.setState({
+                [name]: event.target.value
+            })
+        }
+    }
+    submit = (event) => {
+        // 取值
+        console.log(this.state)
+    }
+    render(){
+        return (
+            <form onSubmit={this.submit}>
+                <!-- 绑定相同的函数 -->
+                用户名<input onChange={this.changeFormDate("username")} type="text" name="username"/>
+                密码<input  onChange={this.changeFormDate("password")} type="text" name="password"/>
+                <button>登录</button>
+            </form>
+        )
+    }
+}
+```
+
+###### 非函数柯里化写法
+
+```jsx
+class Demo extends React.Component{
+		state = {
+			username: "",
+			password: ""
+		}
+		changeFormDate = (name, event) => {
+				this.setState({
+					[name]: event.target.value
+				})
+		}
+		submit = (event) => {
+			// 取值
+			console.log(this.state)
+		}
+		render(){
+			return (
+				<form onSubmit={this.submit}>
+					用户名<input onChange={(event) => {this.changeFormDate("username", event)}} type="text" name="username"/>
+					密码<input  onChange={(event) => {this.changeFormDate("password", event)}} type="text" name="password"/>
+					<button>登录</button>
+				</form>
+			)
+		}
+	}
+```
+
