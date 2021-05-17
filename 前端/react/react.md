@@ -674,6 +674,10 @@ class Demo extends React.Component{
 
 ### 旧版
 
+#### 初始化阶段
+
+##### 组件挂载时
+
 ```jsx
 class Demo extends React.Component{
     // 创建实例时, 仅调用一次
@@ -682,11 +686,142 @@ class Demo extends React.Component{
     componentWillMount(){}
     // 初始化渲染, 或者状态更新, 会被调用多次
     render(){}
-    // 组件完成挂载, 仅调用一次
-	componentDidMount(){}
-    // 组件卸载前, 仅调用一次
-    componentWillUnmount(){}
+    // 组件完成挂载, 仅调用一次(常用)
+	componentDidMount(){}             
 }
+```
 
+#### 更新阶段
+
+##### 组件数据更新(setState())
+
+```jsx
+class Demo extends React.Component{
+    // 调用setState()方法后调用, 判断组件是否应该更新
+    // 默认返回true, 返回false就会结束在当前方法
+    shouldComponentUpdate(){
+        return true;
+    }
+    // 组件将要更新时调用
+    componentWillUpdate(){}
+    render()
+    // 组件更新之后调用
+    componentDidUpdate(){}
+}
+```
+
+##### 组件强制更新(forceUpdate())
+
+```jsx
+// state不发生修改, 让组件强制更新, 比正常更新少了shouldComponentUpdate()
+class Demo extends React.Component{
+    // 组件将要更新时调用
+    componentWillUpdate(){}
+    render()
+    // 组件更新之后调用
+    componentDidUpdate(){}
+}
+```
+
+##### 父组件更新时子组件更新
+
+```jsx
+class Demo extends React.Component{
+    // 该钩子函数是在父组件更新调用render函数时, 才会调用
+    // 父子组件在挂载时, 不会调用
+    // props为父组件传递的参数
+    componentWillReceiveProps(props){
+    }
+    shouldComponentUpdate(){
+        return true;
+    }
+    componentWillUpdate(){}
+    render()
+    componentDidUpdate(){}
+}
+```
+
+#### 卸载组件
+
+##### 组件卸载时
+
+```jsx
+class Demo extends React.Component{
+   	// 组件卸载前, 仅调用一次(常用)
+    componentWillUnmount(){} 
+}
+```
+
+### 新版(17.0.0)
+
+#### 弃用的钩子
+
+```jsx
+// 已经弃用, 但仍然可以使用, 到了18.x版本可能会彻底弃用
+// 弃用的钩子, 前缀加UNSAFE_即可继续使用, 但不推荐使用
+class Demo extends React.Component{
+    componentWillMount(){}  // => 替换为 UNSAFE_componentWillMount(){}
+
+    componentWillUpdate(){}  // => 替换为 UNSAFE_componentWillUpdate(){}
+    
+	componentWillReceiveProps(){} // 替换为 UNSAFE_componentWillReceiveProps(){}
+}
+```
+
+#### 新增的钩子
+
+新增了两个钩子
+
+##### 初始化阶段
+
+```js
+class Demo extends React.Component{
+    state = {
+        number: 1
+    }
+    consturctor(){}
+    // 新增的钩子, 在构造函数之后, render之前
+    // 需要定义为静态方法
+    // 返回值可以为null 或者 修改值后的state
+    // 返回值为null时, 无任何影响
+    // 可以接收参数
+    // 适用于state的值在任何时候, 都取决于props, 才会用到这个生命周期函数
+    static getDerivedStateFromProps(props, state){
+        // 如果返回一个写死的值, 那么页面会一直显示写死的值
+        return {
+            number: 1
+        }
+    }
+    render(){}
+    componentDidMount(){}
+}
+```
+
+##### 更新阶段
+
+```jsx
+class Demo extends React.Component{
+    consturctor(){}
+    // 新增的钩子, 在构造函数之后, render之前
+    static getDerivedStateFromProps(){
+        return null;
+    }
+    render(){}
+    // 新增的钩子, 在构造函数之后, render之前
+    // 在更新前获取快照, 将返回值作为componentDidUpdate的第三个参数
+    getSnapshotBeforeUpdate(){
+        return null;
+    }
+    // props为传递的属性,  state为更新前的值, snapshot为getSnapshotBeforeUpdate获取的快照
+    componentDidUpdate(preProps, preState, snapshot){}
+}
+```
+
+## DOM的diff算法
+
+### 遍历时指定的key的作用
+
+```txt
+用于新旧虚拟dom的diff算法比较, key相同并且内容相同, 则直接复用旧dom, 如果key不相同, 则使用新dom
 ```
 
