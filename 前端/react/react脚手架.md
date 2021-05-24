@@ -66,3 +66,34 @@ ReactDOM.render(
 );
 ```
 
+# css模块化
+
+解决多文件css命名相同, 导致css冲突的问题, 类似vue中的scope
+
+## css
+
+```css
+/* css文件命名需要为xxx.module.css的形式  */
+.title{
+    background-color: #61dafb;
+}
+```
+
+## jsx
+
+```jsx
+import React, {Component} from "react";
+// 导入css文件, 并起一个名
+import hello from './index.module.css'
+export default class Hello extends Component{
+    render() {
+        return (
+            <div>
+                <!-- 使用css -->
+                <h2 className={hello.title}>hello react</h2>
+            </div>
+        );
+    }
+}
+```
+
