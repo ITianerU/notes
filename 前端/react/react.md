@@ -546,6 +546,45 @@ class Demo extends React.Component{
 }
 ```
 
+#### 子组件给父组件传值
+
+##### 父组件
+
+```jsx
+class App extends Component{
+  test = (msg) => {
+    console.log(msg);
+  }
+  render(){
+    return (
+        <!-- 给子组件的属性, 绑定一个方法 -->
+        <Hello test={this.test}></Hello>
+    );
+  }
+}
+```
+
+##### 子组件
+
+```jsx
+export default class Hello extends Component{
+    // 组件事件触发的时候, 调用属性传递进来的方法 
+    // 因为方法在父类中并且是箭头函数, 所以该方法在调用的时候的this的指向为父类
+    click = () => {
+        this.props.test("123124")
+    }
+    render() {
+        return (
+            <div>
+                <h2 onClick={this.click}>hello react</h2>
+            </div>
+        );
+    }
+}
+```
+
+
+
 ### 受控 / 非受控组件
 
 #### 非受控组件
