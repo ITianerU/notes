@@ -25,14 +25,21 @@ kernel内核 > centos系统 > jdk8 > tomcat
 
 - 安装yum-utils, 提供yum-config-manager命令
 
-```
+```shell
 sudo yum install -y yum-utils
 ```
 
 - 设置**稳定的**存储库
 
+```shell
+# sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo   # 阿里云
 ```
-sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+- 更新软件包索引
+
+```shell
+yum makecache fast
 ```
 
 - 安装*最新版本*的Docker Engine和容器
@@ -47,7 +54,7 @@ sudo yum install docker-ce docker-ce-cli containerd.io
 sudo systemctl start docker
 ```
 
-- 配置docker 阿里云镜像加速器
+- 配置docker 阿里云镜像加速器(**可选**)
 
 ```
 sudo mkdir -p /etc/docker
@@ -125,7 +132,7 @@ docker images [参数]
 
 参数
 
-- -s n 列出点赞数大于等于n的镜像
+- --filter=stars=n 列出点赞数大于等于n的镜像
 - --no-trunc    显示镜像完整信息
 - --automated  只列出automated build类型的镜像
 
@@ -343,7 +350,7 @@ docker ps -a -q | xargs docker rm
 
 docker exec -it [容器名/id] /bin/bash
 
-以交互模式, 进入容器, 创建新的进程
+以交互模式, 进入容器, 创建新的进程(终端)
 
 ```
 docker exec -it [容器名/id] /bin/bash
@@ -357,7 +364,7 @@ docker exec [名/id] ls -l
 
 docker attach
 
-不会创建新的进程,  多个用户登录时, 会造成共享界面
+不会创建新的进程(终端) ,  多个用户登录时, 会造成共享界面
 
 ```
 docker attach [容器名/id]
@@ -374,7 +381,7 @@ docker logs
 - --tail [n]   显示最后多少条
 
 ```
-docker logs -t -f -tall 100 [容器名/容器id]
+docker logs -t -f --tall 100 [容器名/容器id]
 ```
 
 #### 查看容器进程
@@ -385,7 +392,7 @@ docker top
 docker top [容器名/容器id]
 ```
 
-#### 查看容器内部细节
+#### 查看容器内部配置
 
 docker inspect
 
@@ -409,12 +416,38 @@ docker cp [容器名/容器id]:[目标文件路径] [拷贝到的位置]
 
 docker run -it -v     (v 表示 volumes  卷)
 
+##### 指定路径挂载
+
 ```
 # 在宿主机创建一个数据存储目录,  并在容器内创建一个数据存储目录,  两个目录连接进行数据共享
 docker run -it -v  [宿主机绝对路径目录]:[容器内目录] [镜像名]
-# ro表示read-only 宿主机的数据, 容器只能读, 不能写
+# ro表示read-only 宿主机的数据, 容器只能读, 不能写 rw表示read-write可读写
 docker run -it -v  [宿主机绝对路径目录]:[容器内目录]:ro [镜像名]
 ```
+
+##### 匿名挂载
+
+```bash
+# 不指定宿主机的地址或名称
+docker run -it -v [容器内目录] [镜像名]
+```
+
+##### 具名挂载
+
+```bash
+# 数据卷的名称不是地址, 前面不带 /
+docker run -it -v [数据卷的名称]:[容器内目录] [镜像名]
+```
+
+##### 常用命令
+```bash
+# 查看全部数据卷
+docker volume ls
+# 查看数据卷详情
+docker volume inspect [数据卷名称 | id]
+```
+
+
 
 #### DockerFile
 
@@ -540,7 +573,7 @@ docker run -it --name container02 --volumes-from container01 centos
   -  -d mysql   # 后台运行
 
 ```cmd
-docker run -p 3306:3306 --name mysql -v /home/li/mysql-data/conf:/etc/mysql/conf.d -v /home/li/mysql-data/logs:/logs -v /home/li/mysql-data/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql
+docker run -p 3306:3306 --name mysql -v /home/li/mysql-data/conf:/etc/mysql/conf.d -v /home/li/mysql-data/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql
 ```
 
 测试安装
