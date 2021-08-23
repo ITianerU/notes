@@ -562,6 +562,10 @@ ctrl + l  或 clear
 service network restart
 ```
 
+**ip addr**
+
+查看全部ip
+
 **ifconfig**
 
 查询网卡信息

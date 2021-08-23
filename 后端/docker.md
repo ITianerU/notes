@@ -83,7 +83,7 @@ sudo docker run hello-world
 
 ## 命令
 
-### 帮助
+### 系统
 
 #### 查看版本
 
@@ -102,6 +102,16 @@ docker info
 ```
 docker --help
 ```
+
+#### 网络
+
+##### 查看所有docker网络
+
+```bash
+docker network ls
+```
+
+
 
 ### 镜像
 
@@ -211,19 +221,51 @@ docker history
 docker history [镜像名/镜像ID]
 ```
 
+#### 修改镜像名称 | tag
+
+给镜像修改名称和tag
+
+```bash
+docker tag [镜像id] [新的名称:版本]
+```
+
 #### 提交镜像
 
-发布到阿里云上 
+##### 发布到阿里云上 
 
 - 登录阿里云
+- 创建命名空间
 - 创建仓库 
 - 在仓库列表点击管理按钮， 会有提交文档
 
 ```
 sudo docker login --username=[用户手机号] registry.cn-beijing.aliyuncs.com
-sudo docker tag [ImageId] registry.cn-beijing.aliyuncs.com/itianeru/centos:[镜像版本号]
-sudo docker push registry.cn-beijing.aliyuncs.com/itianeru/centos:[镜像版本号]
+sudo docker tag [镜像id] registry.cn-beijing.aliyuncs.com/itianeru/[镜像名]:[镜像版本号]
+sudo docker push registry.cn-beijing.aliyuncs.com/itianeru/[镜像名]:[镜像版本号]
 ```
+
+##### 发布到DockerHub
+
+```bash
+docker login --username=[账号]
+docker push [账号]/[镜像名]:[镜像版本号]
+```
+
+#### 分享镜像
+
+##### 打包镜像为压缩包
+
+```bash
+docker save -o [路径/压缩包] [镜像名]
+```
+
+##### 加载压缩包为镜像
+
+```bash
+docker load -i [路径/压缩包]
+```
+
+
 
 ### 容器
 
@@ -451,6 +493,8 @@ docker volume inspect [数据卷名称 | id]
 
 #### DockerFile
 
+文件名最好就叫DockerFile, 在build的时候, 会自动寻找这个文件, 如果不是这个名字需要加 -f
+
 用于描述docker镜像,  由一系列命令和参数构成的脚本
 
 DockerFIle 镜像指定容器数据卷时, 为防止镜像在多主机使用, 宿主机指定的文件夹不存在,镜像会只指定容器内的目录
@@ -498,17 +542,31 @@ docker从基础镜像运行一个容器 -> 执行一条指令, 并对容器做�
 
   ```
   ENV [变量名] [变量值]
-  # 使用
+  # 使用时不带中括号
   WORKDIR  $[变量名]
   ```
 
 - ADD   将构建过程中要使用的压缩包, 复制进去, 并解压缩到镜像中指定的文件夹
 
+  ```bash
+  ADD [/路径/安装包] [安装到docker内的路径]
+  ```
+
+  
+
 - COPY    将构建过程中要使用的压缩包, 复制到镜像中指定的文件夹
 
 - VOLUME   指定容器数据卷
 
-- CMD   指定容器启动时, 要执行的命令, 多个CMD只有最后一个生效,  在终端使用docker run后面接的命令会替换掉       CMD命令
+- CMD   在构建镜像时会全部执行, 指定容器启动时, 要执行的命令, 多个CMD只有最后一个生效,  在终端使用docker run后面接的命令会替换掉CMD命令
+
+  ```bash
+  CMD ["ls"]
+  # 或
+  CMD /usr/local/apache-tomcat/bin/startup.sh && tail -f /usr/local/apache-tomcat/logs/catalina.out
+  ```
+
+  
 
 - ENTRYPOINT  指定容器启动时, 要执行的命令, 可以有多个, 不会被替换， docker run后面接的命令会添加到ENTRYPOINT后面
 
@@ -529,6 +587,12 @@ RUN yum -y install vim
 RUN yum -y install net-tools
 
 EXPOSE 80
+
+CMD ["ls"]
+
+ENTRYPOINT  ["ls"]
+
+VOLUME ["volume01", "volume02"]
 
 CMD /bin/bash
 ```
@@ -551,9 +615,81 @@ docker run -it --name container01 centos
 docker run -it --name container02 --volumes-from container01 centos  
 ```
 
-### 例子
+## docker网络
 
-#### mysql
+### 理解docker0
+
+docker0相当于一个路由器
+
+每启动一个容器, 会在宿主机和容器内部创建一对对应的虚拟网卡, 每个容器分配和docker0同一网段的ip
+
+### 最多能开启多少个容器
+
+有65535个ip
+
+### 如何解决ip在容器启动, 随机分配的问题
+
+#### link(不推荐使用, 过于笨重)
+
+容器在每次启动的时候, 所分配的ip可能是不同的, 如果不同的容器互相通过ip地址访问, 可能会发生ip地址变化导致找不到服务的问题
+
+使用link参数可以让, 服务通过容器名称去调用服务, 而不是通过ip
+
+```bash
+docker run -d -P --name tomcat01 tomcat
+# 使用link
+docker run -d -P --name tomcat02 --link tomcat01 tomcat
+# 这样在tomcat02的内部, 使用ping即可ping通, 但是tomcat01无法ping通tomcat02
+# 原理: 是在tomcat02的hosts配置文件中, 加入了tomcat01和这个容器id的地址配置
+ping tomcat01
+```
+
+#### 自定义网络
+
+自定义的网络会解决默认的docker0不支持使用名称访问的问题
+
+#### 默认设置
+
+```bash
+# 开启一个容器, 默认会--net bridge, 这里是使用docker0
+docker run -d -P --name tomcat01 tomcat
+docker run -d -P --name tomcat01 --net bridge tomcat
+```
+
+#### 自定义设置
+
+```bash
+# --driver bridge 设置为桥接
+# --subnet 192.168.0.0/16 设置网段
+# --gateway 192.168.0.1 网关
+# mynet 配置名称
+docker network create --driver bridge --subnet 192.168.0.0/16 --gateway 192.168.0.1 mynet
+# 查看
+docker network inspect mynet
+# 使用自定义的设置
+docker run -d -P --name tomcat01 --net mynet tomcat
+docker run -d -P --name tomcat02 --net mynet tomcat
+# tomcat01 和 tomcat02 都使用了自定义的网络, 可以互相ping通
+```
+
+#### 使用场景
+
+在部署集群服务时, 不用的集群使用不同的网络, mysql集群一个网络, redis集群一个网络
+
+### 网络联通
+
+两个不同的网络下的容器可以互联, 本质是让, 一个网络的容器, 能联通另一个网络
+
+```bash
+# mynet是自定义的网络
+# tomcat-docker0是默认网络docker0中一个容器
+# 内部是将tomcat-docker0这个容器加到了mynet下, 相当于tomcat-docker0有了两个IP
+docker network connect mynet tomcat-docker0
+```
+
+## 例子
+
+### mysql
 
 - docker search mysql   # 查找
 
@@ -564,13 +700,13 @@ docker run -it --name container02 --volumes-from container01 centos
 - docker run   # 运行实例 
 
   - -p  3306:3306    # 端口映射
-  -  --name mysql    # 容器命名
+  - --name mysql    # 容器命名
 
-  -  -v /mysql/conf:/etc/mysql/conf.d   # 主机与容器共享配置文件
-  -  -v /mysql/logs:/logs    # 主机与容器共享日志
-  -  -v /mysql/data:/var/lib/mysql   # 主机与容器共享数据
-  -  -e MYSQL_ROOT_PASSWORD=123456   # 初始化root用户密码
-  -  -d mysql   # 后台运行
+  - -v /mysql/conf:/etc/mysql/conf.d   # 主机与容器共享配置文件
+  - -v /mysql/logs:/logs    # 主机与容器共享日志
+  - -v /mysql/data:/var/lib/mysql   # 主机与容器共享数据
+  - -e MYSQL_ROOT_PASSWORD=123456   # 初始化root用户密码
+  - -d mysql   # 后台运行
 
 ```cmd
 docker run -p 3306:3306 --name mysql -v /home/li/mysql-data/conf:/etc/mysql/conf.d -v /home/li/mysql-data/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql
@@ -588,7 +724,9 @@ docker run -p 3306:3306 --name mysql -v /home/li/mysql-data/conf:/etc/mysql/conf
 docker exec [容器名] sh -c ' exec mysqldump --all-databases -uroot -p"123456" ' > 【备份路径】
 ```
 
-#### redis
+### redis
+
+#### 单节点
 
 - docker search redis   # 查找
 
@@ -599,11 +737,11 @@ docker exec [容器名] sh -c ' exec mysqldump --all-databases -uroot -p"123456"
 - docker run   # 运行实例 
 
   - -p  3306:3306    # 端口映射
-  -  --name redis    # 容器命名
+  - --name redis    # 容器命名
 
-  -  -v /home/li/redis-data/data:/data   # 主机与容器共享数据
-  -  -v /home/li/redis-data/conf/redis.conf:/usr/local/etc/redis/redis.conf    # 主机与容器共享配置文件
-  -  -d redis   # 后台运行
+  - -v /home/li/redis-data/data:/data   # 主机与容器共享数据
+  - -v /home/li/redis-data/conf/redis.conf:/usr/local/etc/redis/redis.conf    # 主机与容器共享配置文件
+  - -d redis   # 后台运行
   - redis-server /usr/local/etc/redis/redis.conf --appendonly yes   # 执行启动命令
 
 ```
@@ -612,4 +750,98 @@ docker run -p 6379:6379 --name redis -v /home/li/redis-data/data:/data -v /home/
 
 测试安装
 
-- docker exec -it redis redis-cli
+- docker exec -it redis redis-cli -a 123456
+
+#### 集群
+
+三主三从
+
+##### 创建网卡
+
+```bash
+docker network create --subnet 172.38.0.0/16 redis
+```
+
+##### shell脚本
+
+直接粘贴到命令行执行
+
+```shell
+for port in $(seq 1 6); \
+do \
+mkdir -p /mydata/redis/node-${port}/conf
+touch /mydata/redis/node-${port}/conf/redis.conf
+cat  EOF /mydata/redis/node-${port}/conf/redis.conf
+port 6379 
+bind 0.0.0.0
+cluster-enabled yes 
+cluster-config-file nodes.conf
+cluster-node-timeout 5000
+cluster-announce-ip 172.38.0.1${port}
+cluster-announce-port 6379
+cluster-announce-bus-port 16379
+appendonly yes
+EOF
+done
+```
+
+##### 创建容器
+
+```bash
+docker run -p 6371:6379 -p 16371:16379 --name redis-1 \
+    -v /mydata/redis/node-1/data:/data \
+    -v /mydata/redis/node-1/conf/redis.conf:/etc/redis/redis.conf \
+    -d --net redis --ip 172.38.0.11 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+   
+docker run -p 6372:6379 -p 16372:16379 --name redis-2 \
+    -v /mydata/redis/node-2/data:/data \
+    -v /mydata/redis/node-2/conf/redis.conf:/etc/redis/redis.conf \
+    -d --net redis --ip 172.38.0.12 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+    
+# 剩余4个省略
+```
+
+##### 创建集群
+
+```bash
+# 进入容器, redis内部没使用/bin/bash, 使用的/bin/sh
+docker exec -it redis-1 /bin/sh
+# 创建, 选择yes 即可创建
+redis-cli --cluster create 172.38.0.11:6379 172.38.0.12:6379 172.38.0.13:6379 172.38.0.14:6379 172.38.0.15:6379 172.38.0.16:6379 --cluster-replicas 1
+```
+
+##### 测试
+
+```bash
+# 进入容器
+docker exec -it redis-1 /bin/sh
+# 连接 -c表示使用集群
+redis-cli -c
+	# 查看信息
+	cluster info
+	# 查看节点
+	cluster nodes
+```
+
+### SpringBoot微服务打包Docker镜像
+
+#### 创建Dockerfile
+
+```dockerfile
+FROM java:8
+COPY *.jar /app.jar
+CMD ["--server.port=8080"]
+EXPOSE 8080
+ENTRYPOINT ["java","-jar", "/app.jar"]
+```
+
+#### 创建镜像
+
+将SpringBoot项目和Dockerfile文件放在一起
+
+```bash
+docker build -t [镜像名]
+```
+
+
+
