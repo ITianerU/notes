@@ -82,7 +82,28 @@ ctrl + alt + v
 ctrl + H
 ```
 
+## 修改文件字符编码
 
+- settings -> Editor -> File Encodings
+
+  将如下配置都改为 UTF-8
+
+  - Global Encoding
+  - Project Encoding
+  - Default encoding for properties files 
+
+## 开启注解处理器
+
+不开启可能会导致Lombok无法使用等问题
+
+- settings -> Build, Execution, Deployment -> Compiler -> Annotation Processors
+  - Default
+    -  勾选 Enable annotation processing
+
+## 修改Java编译器版本
+
+- settings -> Build, Execution, Deployment -> Compiler -> Java Compiler
+  - 修改 Target bytecode version
 
 -----
 
