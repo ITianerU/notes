@@ -843,5 +843,19 @@ ENTRYPOINT ["java","-jar", "/app.jar"]
 docker build -t [镜像名]
 ```
 
+### Zookeeper
+
+#### 下载
+
+```bash
+docker search zookeeper
+```
+
+#### 创建容器
+
+```bash
+docker run -d -p 2181:2181 --name zookeeper zookeeper
+```
+
 
 

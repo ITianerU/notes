@@ -36,6 +36,31 @@
 
 服务调用方, 以别名的方式, 去注册中心获取要调用的服务的通讯地址
 
+## Eureka工作流程
+
+- 先启动Eureka注册中心
+- 启动服务提供者, 服务启动后, 会把自己的信息(服务地址等)注册到注册中心
+- 消费者需要调用服务提供者的接口时, 使用服务提供者的别名去注册中心获取真实地址, 然后使用真实地址去调用接口(低层是用httpClient)
+- 消费者获得服务地址后, 会缓存在本地jvm内存中, 默认每间隔30秒更新一次服务调用地址
+
+## 微服务远程调用最核心的是什么
+
+高可用, 搭建集群, 实现负载均衡+故障容错
+
+## Eureka自我保护机制
+
+当页面出现如下红色文字时, 说明Eureka进入了自我保护机制
+
+<span style="color:red">EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY'RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.</span>
+
+默认情况下, 注册中心一定时间没有收到某个微服务的心跳, 90秒没收到就会注销该微服务, 但是可能会发生, 微服务正常, 但是微服务与注册中心的网络发生故障, 此时, 不想让这个微服务被注销, 就出现了自我保护机制 
+
+Eureka Server将会尝试保护其服务注册到注册表中的信息, 不再删除服务注册表中的数据,也就是说不会注销微服务,
+
+就是说, 一个服务宕机了, 注册中心不会删除这个微服务, **属于CAP里面的AP,**
+
+**触发条件:** 当注册中心短时间内, 出现大量微服务丢失的情况才会触发
+
 # 文档
 
 - https://spring.io/projects/spring-cloud#learn  (SpringCloud文档)
@@ -110,6 +135,75 @@
 客户端
 
 用于简化与Eureka Server的交互, 客户端同时也具备一个内置的, 使用轮循(round-robin)负载算法的负载均衡器, 在应用启动后, 将会向Eureka Server发送心跳包(默认周期为30秒), 如果Eureka Server在多个心跳周期内, 没有接收到这个某个节点的心跳, Eureka Server会将从服务注册表中把这个服务节点移除(默认90秒)
+
+### 服务端配置
+
+```yml
+eureka:
+  instance:
+    hostname: eureka7001.com         # eureka服务端的实例名称
+  client:
+    register-with-eureka: false   # false表示不注册自己
+    fetch-registry: false         # false表示自己就是注册中心, 我的职责是维护服务实例, 并不需要检索服务
+    service-url:
+      # 设置与Eureka Server交互地址, 查询服务和注册服务都需要依赖这个地址
+      defaultZone: http://eureka7002.com:7002/eureka/,http://eureka7003.com:7003/eureka/
+```
+
+### 客户端配置
+
+```yml
+eureka:
+  instance:
+    instance-id: cloud-payment-service8001  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+    prefer-ip-address: true                 # 鼠标放在服务名上, 左下角显示服务ip
+  client:
+    register-with-eureka: true  # 表示是否将服务注册到Eureka Server中, 默认为true
+    fetch-registry: true        # 是否从EurekaServer抓取已有的注册信息, 默认为true, 集群必须设置为true才能使用ribbon进行负载均衡, 单节点可以为false
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7002.com:7002/eureka/,http://eureka7003.com:7003/eureka/
+
+# info中配置的信息, 会被/actuator/info这个接口返回
+# 在Eureka的监控页面, 点击服务名打开的页面会返回info里面自定义的数据
+info:
+  # 略
+```
+
+### 关闭自我保护模式
+
+服务端添加如下配置
+
+```yml
+eureka:
+  server:
+    # 关闭自我保护机制
+    enable-self-preservation: false
+    # 表示 Eureka Server 清理无效节点的频率
+    eviction-interval-timer-in-ms: 2000
+```
+
+客户端添加如下配置
+
+```yml
+eureka:
+  instance:
+    # 表示 Eureka Server 在接收到上一个心跳之后等待下一个心跳的秒数（默认 90 秒），若不能在指定时间内收到心跳，则移除此实例，并禁止此实例的流量。
+    # 此值设置太长，即使实例不存在，流量也能路由到该实例 
+    # 此值设置太小，由于网络故障，实例会被取消流量
+    # 需要设置为至少高于 lease-renewal-interval-in-seconds 的值，不然会被误移除了。
+    lease-expiration-duration-in-seconds: 30
+    # 表示 Eureka Client 向 Eureka Server 发送心跳的频率（默认 30 秒），
+    # 如果在 lease-expiration-duration-in-seconds 指定的时间内未收到心跳，则移除该实例。
+    lease-renewal-interval-in-seconds: 15
+```
+
+## Zookeeper
+
+zookeeper中注册进来的节点是临时的, 当服务停止, 在一段时间内, 该节点在zookeeper内会被注销
+
+服务再次启动, 会重新注册, 比较前后两次的实例id可以看到, 两次的实例id不同
+
+相对于Eureka, 在服务停止时会更快的注销节点, 没有自我保护机制
 
 # 项目搭建
 
@@ -624,7 +718,7 @@ public class OrderController {
 }
 ```
 
-### 使用Eureka的版本
+### 使用单机Eureka的版本
 
 在不使用注册中心的版本基础上, 进行修改
 
@@ -747,11 +841,19 @@ http://localhost:7001/
 
 ```yml
 eureka:
+  instance:
+    instance-id: cloud-payment-service8001  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+    prefer-ip-address: true                 # 鼠标放在服务名上, 左下角显示服务ip
   client:
     register-with-eureka: true  # 表示是否将服务注册到Eureka Server中, 默认为true
     fetch-registry: true        # 是否从EurekaServer抓取已有的注册信息, 默认为true, 集群必须设置为true才能使用ribbon进行负载均衡, 单节点可以为false
     service-url:
       defaultZone: http://localhost:7001/eureka   # 注册中心地址
+
+# info中配置的信息, 会被/actuator/info这个接口返回
+# 在Eureka的监控页面, 点击服务名打开的页面会返回info里面自定义的数据
+info:
+  # 略
 ```
 
 ##### Controller
@@ -816,11 +918,19 @@ public class PaymentMain8001 {
 
 ```yml
 eureka:
+  instance:
+    instance-id: cloud-payment-service8001  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+    prefer-ip-address: true                 # 鼠标放在服务名上, 左下角显示服务ip
   client:
     register-with-eureka: true  # 表示是否将服务注册到Eureka Server中, 默认为true
     fetch-registry: true        # 是否从EurekaServer抓取已有的注册信息, 默认为true, 集群必须设置为true才能使用ribbon进行负载均衡, 单节点可以为false
     service-url:
       defaultZone: http://localhost:7001/eureka   # 注册中心地址
+      
+# info中配置的信息, 会被/actuator/info这个接口返回
+# 在Eureka的监控页面, 点击服务名打开的页面会返回info里面自定义的数据
+info:
+  # 略
 ```
 
 ##### java配置
@@ -870,3 +980,355 @@ public class OrderMain80 {
     }
 }
 ```
+
+### 使用集群Eureka的版本
+
+新建三个Eureka子模块
+
+- **eureka.instance.hostname** 需要不同
+- **eureka.client.service-url.defaultZone** 中的host和port需要不同, 因为host为自定义的内容, 所以需要配置到本地host文件中
+
+#### host文件配置
+
+```properties
+127.0.0.1       eureka7001.com
+127.0.0.1       eureka7002.com
+127.0.0.1       eureka7003.com
+```
+
+#### Eureka1配置文件
+
+```yml
+server:
+  port: 7001
+
+spring:
+  application:
+    name: cloud-eureka-server
+
+eureka:
+  instance:
+    hostname: eureka7001.com      
+  client:
+    register-with-eureka: false 
+    fetch-registry: false   
+    service-url:
+      # 将eureka服务注册到另外两个注册中心上
+      defaultZone: http://eureka7002.com:7002/eureka/,http://eureka7003.com:7003/eureka/
+```
+
+#### Eureka2配置文件
+
+```yml
+server:
+  port: 7002
+
+spring:
+  application:
+    name: cloud-eureka-server
+
+eureka:
+  instance:
+    hostname: eureka7002.com
+  client:
+    register-with-eureka: false   
+    fetch-registry: false       
+    service-url:
+      # 将eureka服务注册到另外两个注册中心上
+      defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7003.com:7003/eureka/
+```
+
+#### Eureka3配置文件
+
+```yml
+server:
+  port: 7003
+
+spring:
+  application:
+    name: cloud-eureka-server
+
+eureka:
+  instance:
+    hostname: eureka7003.com     
+  client:
+    register-with-eureka: false  
+    fetch-registry: false         
+    service-url:
+      # 将eureka服务注册到另外两个注册中心上
+      defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7003.com:7003/eureka/
+```
+
+#### 其他微服务配置
+
+```yml
+eureka:
+  client:
+    register-with-eureka: true  
+    fetch-registry: true        
+    service-url:
+      # 这里需要配置三个注册中心
+      defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7002.com:7002/eureka/,http://eureka7003.com:7003/eureka/
+```
+
+#### 订单模块
+
+##### RestTemplate开启负载均衡
+
+```java
+@Configuration
+public class ApplicationContextConfig {
+
+    @Bean
+    @LoadBalanced   // 开启负载均衡
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+##### Controller
+
+```java
+@RestController
+@RequestMapping("order")
+public class OrderController {
+    @Resource
+    private RestTemplate restTemplate;
+	
+    // restTemplate开启负载均衡后, 在掉其他服务接口时, 只需要指定要调用的服务名cloud-payment-service
+    // 默认时以轮询的方式调用
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        return restTemplate.getForObject("http://cloud-payment-service/payment/" + id, CommonResult.class);
+    }
+
+    @PostMapping
+    public CommonResult add(Payment payment) {
+        return restTemplate.postForObject("http://cloud-payment-service/payment", payment, CommonResult.class);
+    }
+}
+```
+
+#### 测试
+
+```properties
+# 访问如下三个注册中心的监控页面, 再每个注册中心的监控页面下, 在DS Replicas下能看到另外两个注册中心
+# 并且能看到注册进来的每个微服务
+http://eureka7001.com:7001/
+http://eureka7002.com:7002/
+http://eureka7003.com:7003/
+```
+
+### 微服务获取注册在Eureka中的其他服务信息
+
+#### 在微服务的Controller中使用
+
+```java
+@RequestMapping("/payment")
+@RestController
+@Slf4j
+public class PaymentController {
+    @Resource
+    private DiscoveryClient discoveryClient;
+
+    @GetMapping("discovery")
+    public Object discovery(){
+        // 获取服务列表
+        List<String> services = discoveryClient.getServices();
+        // 获取一个服务下的全部实例
+        for (String service : services) {
+            List<ServiceInstance> instances = discoveryClient.getInstances(service);
+            // 从实例中获取信息
+            for (ServiceInstance instance : instances) {
+                log.info(instance.getServiceId() + "\t" + instance.getHost() + "\t" + instance.getPort());
+            }
+        }
+        return this.discoveryClient;
+    }
+}
+```
+
+### 使用单机Zookeeper版本
+
+#### 支付模块
+
+##### pom文件
+
+```xml
+<dependencies>
+    <!-- zookeeper客户端与springcloud整合包 -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-zookeeper-discovery</artifactId>
+        <!-- 如果出现zookeeper的安装版本和使用的jar包版本不同意的情况, 排除使用的版本 -->
+        <!-- <exclusions>
+             <exclusion>
+                 <groupId>org.apache.zookeeper</groupId>
+              <artifactId>zookeeper</artifactId>
+                </exclusion>
+            </exclusions> -->
+    </dependency>
+    <!-- 手动安装指定版本 -->
+    <!--
+        <dependency>
+         <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <version></version>
+        </dependency>
+  -->
+</dependencies>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 8003
+
+spring:
+  application:
+    name:  cloud-payment-service
+  # zookeeper配置
+  cloud:
+    zookeeper:
+      # 如果配置集群, 只需要用逗号在后面配置多个localhost:2181,localhost:2182
+      connect-string: localhost:2181
+```
+
+##### Controller
+
+```java
+@RequestMapping("/payment")
+@RestController
+@Slf4j
+public class PaymentController {
+    @Resource
+    private PaymentService paymentService;
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        Payment payment = paymentService.getPaymentById(id);
+        if (payment != null){
+            return new CommonResult(200, "成功哈", payment);
+        }else{
+            return new CommonResult(200, "没有该条数据");
+        }
+    }
+    @PostMapping
+    public CommonResult add(@RequestBody Payment payment) {
+        int result = paymentService.add(payment);
+        if(result == 1){
+            return new CommonResult(200, "成功", result);
+        }
+        return new CommonResult(500, "失败");
+    }
+}
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+// 该注解用于向consul和zookeeper作为注册中心时使用注册服务
+@EnableDiscoveryClient
+public class PaymentMain8001 {
+    public static void main(String[] args) {
+        SpringApplication.run(PaymentMain8001.class, args);
+    }
+}
+```
+
+#### 订单模块
+
+##### pom文件
+
+```xml
+<dependencies>
+    <!-- zookeeper客户端与springcloud整合包 -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-zookeeper-discovery</artifactId>
+        <!-- 如果出现zookeeper的安装版本和使用的jar包版本不同意的情况, 排除使用的版本 -->
+        <!-- <exclusions>
+             <exclusion>
+                 <groupId>org.apache.zookeeper</groupId>
+              <artifactId>zookeeper</artifactId>
+                </exclusion>
+            </exclusions> -->
+    </dependency>
+    <!-- 手动安装指定版本 -->
+    <!--
+        <dependency>
+         <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <version></version>
+        </dependency>
+  -->
+</dependencies>
+```
+
+##### 配置文件
+
+```yml
+spring:
+  application:
+    name: cloud-order-service
+  cloud:
+    zookeeper:
+      # 如果配置集群, 只需要用逗号在后面配置多个localhost:2181,localhost:2182
+      connect-string: localhost:2181
+```
+
+##### java配置
+
+```java
+@Configuration
+@LoadBalanced
+public class ApplicationContextConfig {
+    // 创建RestTemplate的Bean
+    @Bean
+    @LoadBalanced
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+##### Controller
+
+```java
+@RestController
+@RequestMapping("order")
+public class OrderController {
+    @Resource
+    private RestTemplate restTemplate;
+
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        return restTemplate.getForObject("http://localhost:8001/payment/" + id, CommonResult.class);
+    }
+
+    @PostMapping
+    public CommonResult add(Payment payment) {
+        // 这里使用post调用支付服务的接口时, 传参需要支付服务接口有@RequestBody注解
+        return restTemplate.postForObject("http://localhost:8001/payment", payment, CommonResult.class);
+    }
+}
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+// 该注解用于向consul和zookeeper作为注册中心时使用注册服务
+@EnableDiscoveryClient
+public class OrderMain81 {
+    public static void main(String[] args) {
+        SpringApplication.run(OrderMain81.class, args);
+    }
+}
+```
+
+### 
+
+### 
