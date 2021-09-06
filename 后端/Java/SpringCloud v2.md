@@ -61,15 +61,40 @@ Eureka Server将会尝试保护其服务注册到注册表中的信息, 不再�
 
 **触发条件:** 当注册中心短时间内, 出现大量微服务丢失的情况才会触发
 
+## CAP原则
+
+- C(Consistency)  强一致性
+- A(Availability)  可用性
+- P(Partition Tolerance)  分区容错性
+
+一个分布式系统不可能同时很好的满足CAP, 因此根据CAP原则将NoSQL数据库分成了三种
+
+- CA  单点集群, 满足一致性, 可用性的系统, 通常在扩展性不太强
+- CP  满足一致性, 分区容错性的系统, 通常性能不高
+- AP  满足可用性, 分区容错性的系统, 通常对一致性要求低一些
+
+## 负载均衡是什么意思
+
+简单的说就是将用户的请求,平均分配到多个服务上, 从而达到系统的HA(高可用)
+
+常用的负载均衡软件Nginx, LVS, 硬件F5等
+
+## Ribbon本地负载均衡和Nginx负载均衡的区别
+
+Nginx是服务器负载均衡, 客户端所有请求都会交给Nginx, 然后由Nginx实现转发请求.是属于集中式的负载均衡
+
+Ribbon本地负载均衡, 在调用微服务接口时候, 会在注册中心上获取注册信息服务列表之后缓存到JVM本地, 从而在本地实现RPC远程服务调用技术,属于进程内的负载均衡
+
 # 文档
 
 - https://spring.io/projects/spring-cloud#learn  (SpringCloud文档)
 - https://www.bookstack.cn/read/spring-cloud-docs/docs-index.md  (中文文档. 有点过时)
 - https://docs.spring.io/spring-boot/docs  (SpringBoot文档)
+- https://www.consul.io/docs/intro (consul文档)
 
 # 版本选择
 
-### 查看对应版本
+## 查看对应版本
 ```properties
 # https://spring.io/projects/spring-cloud#overview
 打开这个链接在Table 1. Release train Spring Boot compatibility这能看到大概的版本对应表格
@@ -204,6 +229,34 @@ zookeeper中注册进来的节点是临时的, 当服务停止, 在一段时间�
 服务再次启动, 会重新注册, 比较前后两次的实例id可以看到, 两次的实例id不同
 
 相对于Eureka, 在服务停止时会更快的注销节点, 没有自我保护机制
+
+## Consul
+
+### 简介
+
+Consul是一套开源的分布式服务发现和配置的管理系统, 使用go语言开发
+
+提供了微服务系统中的服务治理, 配置中心, 控制总线等功能. 这些功能中的每一个都可以根据需要单独使用, 也可以一起使用以构建全方位的服务网络
+
+总之Consul提供了一种完整的服务网络解决方案
+
+## 三个注册中心异同点
+
+|  组件名   | 语言 | CAP  | 服务健康检查 | 对外暴露监控页面 | SpringCloud集成 |
+| :-------: | :--: | :--: | :----------: | :--------------: | :-------------: |
+|  Eureka   | Java |  AP  |  可配置支持  |      有页面      |     已集成      |
+|  Consul   |  Go  |  CP  |     支持     |      有页面      |     已集成      |
+| Zookeeper | Java |  CP  |     支持     |      无页面      |     已集成      |
+
+# 服务调用
+
+## Ribbon
+
+### 简介
+
+Spring Cloud Ribbon是基于NetFlix Ribbon实现的一套负载均衡的工具
+
+主要功能是提供客户端软件的**负载均衡算法和服务调用**, Ribbon客户端组件提供一系列完善的配置项, 如连接超时, 重试等. 
 
 # 项目搭建
 
@@ -1329,6 +1382,173 @@ public class OrderMain81 {
 }
 ```
 
-### 
+### 使用单机Consul版本
 
-### 
+#### 支付模块
+
+##### pom文件
+
+```xml
+<dependencies>
+    <!-- consul客户端与springcloud整合包 -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+    </dependency>
+</dependencies>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 8005
+
+spring:
+  application:
+    name:  cloud-payment-service
+  # consul配置
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        service-name: ${spring.application.name}
+        heartbeat:
+          enabled: true  # 开启健康检查
+```
+
+##### Controller
+
+```java
+@RequestMapping("/payment")
+@RestController
+@Slf4j
+public class PaymentController {
+    @Resource
+    private PaymentService paymentService;
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        Payment payment = paymentService.getPaymentById(id);
+        if (payment != null){
+            return new CommonResult(200, "成功哈", payment);
+        }else{
+            return new CommonResult(200, "没有该条数据");
+        }
+    }
+    @PostMapping
+    public CommonResult add(@RequestBody Payment payment) {
+        int result = paymentService.add(payment);
+        if(result == 1){
+            return new CommonResult(200, "成功", result);
+        }
+        return new CommonResult(500, "失败");
+    }
+}
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+// 该注解用于向consul和zookeeper作为注册中心时使用注册服务
+@EnableDiscoveryClient
+public class PaymentMain8001 {
+    public static void main(String[] args) {
+        SpringApplication.run(PaymentMain8001.class, args);
+    }
+}
+```
+
+#### 订单模块
+
+##### pom文件
+
+```xml
+<dependencies>
+    <!-- consul客户端与springcloud整合包 -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+    </dependency>
+</dependencies>
+```
+
+##### 配置文件
+
+```yml
+spring:
+  application:
+    name: cloud-order-service
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        service-name: ${spring.application.name}
+        heartbeat:
+          enabled: true   # 开启健康检查
+```
+
+##### java配置
+
+```java
+@Configuration
+@LoadBalanced
+public class ApplicationContextConfig {
+    // 创建RestTemplate的Bean
+    @Bean
+    @LoadBalanced
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+##### Controller
+
+```java
+@RestController
+@RequestMapping("order")
+public class OrderController {
+    @Resource
+    private RestTemplate restTemplate;
+
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        return restTemplate.getForObject("http://localhost:8001/payment/" + id, CommonResult.class);
+    }
+
+    @PostMapping
+    public CommonResult add(Payment payment) {
+        // 这里使用post调用支付服务的接口时, 传参需要支付服务接口有@RequestBody注解
+        return restTemplate.postForObject("http://localhost:8001/payment", payment, CommonResult.class);
+    }
+}
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+// 该注解用于向consul和zookeeper作为注册中心时使用注册服务
+@EnableDiscoveryClient
+public class OrderMain81 {
+    public static void main(String[] args) {
+        SpringApplication.run(OrderMain81.class, args);
+    }
+}
+```
+
+### 在集群Eureka子项目上使用Ribbon
+
+#### 依赖
+
+```xml
+<!-- spring-cloud-starter-netflix-eureka-client客户端依赖已经集成了Ribbon, 无需手动引入 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+```
+
