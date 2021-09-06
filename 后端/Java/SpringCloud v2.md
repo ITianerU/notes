@@ -258,6 +258,63 @@ Spring Cloud Ribbon是基于NetFlix Ribbon实现的一套负载均衡的工具
 
 主要功能是提供客户端软件的**负载均衡算法和服务调用**, Ribbon客户端组件提供一系列完善的配置项, 如连接超时, 重试等. 
 
+### 负载均衡算法
+
+| 策略类                    | 命名             | 说明                                                         |
+| ------------------------- | ---------------- | :----------------------------------------------------------- |
+| RandomRule                | 随机策略         | 随机选择 Server                                              |
+| RoundRobinRule            | 轮训策略         | 按顺序循环选择 Server                                        |
+| RetryRule                 | 重试策略         | 先按照轮询的方式获取服务, 在一个配置时问段内当选择 Server 不成功，则一直尝试选择一个可用的 Server |
+| BestAvailableRule         | 最低并发策略     | 逐个考察 Server，如果 Server 断路器打开，则忽略，再选择其中并发连接最低的 Server |
+| AvailabilityFilteringRule | 可用过滤策略     | 过滤掉一直连接失败并被标记为 `circuit tripped` 的 Server，过滤掉那些高并发连                     接的 Server（active connections 超过配置的网值） |
+| ResponseTimeWeightedRule  | 响应时间加权策略 | 优化了随机策略 根据 Server 的响应时间分配权重。响应时间越长，权重越低，被选择到的概率就越低；响应时间越短，权重越高，被选择到的概率就越高。这个策略很贴切，综合了各种因素，如：网络、磁盘、IO等，这些因素直接影响着响应时间 |
+| ZoneAvoidanceRule         | 区域权衡策略     | 综合判断 Server 所在区域的性能和 Server 的可用性轮询选择 Server，并且判定一个 AWS Zone 的运行性能是否可用，剔除不可用的 Zone 中的所有 Server |
+
+### 自定义负载均衡规则
+
+**注:**  类不能再启动类同级的文件夹下, 就是不能被启动类扫描到, 如下
+
+- com.itianeru
+  - myrule    // 这个文件夹下, 自定义规则
+    - MySelfRule   // 自定义规则类
+  - springcloud   // 这个文件夹下为业务代码
+    - controller
+    - service
+    - dao
+    - main.java   // 启动类
+
+```java
+@Configuration
+public class MySelfRule {
+    
+    @Bean
+    public IRule myRule(){
+        // 
+        return new RandomRule();
+    }
+}
+```
+
+#### 启动类配置自定义类
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+// 只配置一个服务, 注: name的值为controller调微服务时, 如果是大写, 这里就要大写, 如果是小写, 这里就要小写
+// @RibbonClient(name = "cloud-payment-service", configuration = MySelfRule.class)
+// 配置多个服务
+@RibbonClients(
+    @RibbonClient(name = "cloud-payment-service", configuration = MySelfRule.class)
+)
+public class OrderMain80 {
+    public static void main(String[] args) {
+        SpringApplication.run(OrderMain80.class, args);
+    }
+}
+```
+
+
+
 # 项目搭建
 
 ## 创建父项目
@@ -1550,5 +1607,68 @@ public class OrderMain81 {
     <groupId>org.springframework.cloud</groupId>
     <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
 </dependency>
+```
+
+#### 配置类
+
+```java
+@Configuration
+public class ApplicationContextConfig {
+
+    @Bean
+    @LoadBalanced  // 开启负载均衡
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+#### Controller
+
+```java
+// 使用 restTemplate.getForObject 返回json (常用)
+@RestController
+@RequestMapping("order")
+public class OrderController {
+    @Resource
+    private RestTemplate restTemplate;
+
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        return restTemplate.getForObject("http://cloud-payment-service/payment/" + id, CommonResult.class);
+    }
+
+    @PostMapping
+    public CommonResult add(Payment payment) {
+        return restTemplate.postForObject("http://cloud-payment-service/payment", payment, CommonResult.class);
+    }
+}
+// 使用 restTemplate.getForEntity 返回对象包含了请求信息
+@RestController
+@RequestMapping("order2")
+public class Order2Controller {
+    @Resource
+    private RestTemplate restTemplate;
+
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        ResponseEntity<CommonResult> forEntity = restTemplate.getForEntity("http://cloud-payment-service/payment/" + id, CommonResult.class);
+        if (forEntity.getStatusCode().is2xxSuccessful()){
+            return forEntity.getBody();
+        }else{
+            return new CommonResult<>(500, "失败");
+        }
+    }
+
+    @PostMapping
+    public CommonResult add(Payment payment) {
+        ResponseEntity<CommonResult> forEntity = restTemplate.postForEntity("http://cloud-payment-service/payment", payment, CommonResult.class);
+        if (forEntity.getStatusCode().is2xxSuccessful()){
+            return forEntity.getBody();
+        }else{
+            return new CommonResult<>(500, "失败");
+        }
+    }
+}
 ```
 
