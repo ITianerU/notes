@@ -258,6 +258,75 @@ Spring Cloud Ribbon是基于NetFlix Ribbon实现的一套负载均衡的工具
 
 主要功能是提供客户端软件的**负载均衡算法和服务调用**, Ribbon客户端组件提供一系列完善的配置项, 如连接超时, 重试等. 
 
+### 依赖
+
+```xml
+<!-- spring-cloud-starter-netflix-eureka-client客户端依赖已经集成了Ribbon, 无需手动引入 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+```
+
+### 配置类
+
+```java
+@Configuration
+public class ApplicationContextConfig {
+
+    @Bean
+    @LoadBalanced  // 开启负载均衡
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+### 用法
+
+```java
+@RestController
+@RequestMapping("order")
+public class OrderController {
+    @Resource
+    private RestTemplate restTemplate;
+
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        // 返回json
+        return restTemplate.getForObject("http://cloud-payment-service/payment/" + id, CommonResult.class);
+    }
+
+    @PostMapping
+    public CommonResult add(Payment payment) {
+        // 返回json
+        return restTemplate.postForObject("http://cloud-payment-service/payment", payment, CommonResult.class);
+    }
+    
+    @GetMapping("/{id}")
+    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
+        // 返回数据携带请求信息
+        ResponseEntity<CommonResult> forEntity = restTemplate.getForEntity("http://cloud-payment-service/payment/" + id, CommonResult.class);
+        if (forEntity.getStatusCode().is2xxSuccessful()){
+            return forEntity.getBody();
+        }else{
+            return new CommonResult<>(500, "失败");
+        }
+    }
+    
+    @PostMapping
+    public CommonResult add(Payment payment) {
+        // 返回数据携带请求信息
+        ResponseEntity<CommonResult> forEntity = restTemplate.postForEntity("http://cloud-payment-service/payment", payment, CommonResult.class);
+        if (forEntity.getStatusCode().is2xxSuccessful()){
+            return forEntity.getBody();
+        }else{
+            return new CommonResult<>(500, "失败");
+        }
+    }
+}
+```
+
 ### 负载均衡算法
 
 | 策略类                    | 命名             | 说明                                                         | 原理                                                         |
@@ -270,20 +339,58 @@ Spring Cloud Ribbon是基于NetFlix Ribbon实现的一套负载均衡的工具
 | ResponseTimeWeightedRule  | 响应时间加权策略 | 优化了随机策略 根据 Server 的响应时间分配权重。<br />响应时间越长，权重越低，被选择到的概率就越低；响应时间越短，权重越高，被选择到的概率就越高。<br />这个策略很贴切，综合了各种因素，如：网络、磁盘、IO等，这些因素直接影响着响应时间 |                                                              |
 | ZoneAvoidanceRule         | 区域权衡策略     | 综合判断 Server 所在区域的性能和 Server 的可用性轮询选择 Server，并且判定一个 AWS Zone 的运行性能是否可用，剔除不可用的 Zone 中的所有 Server |                                                              |
 
-
-
 ### 自定义负载均衡规则
 
 **注:**  类不能再启动类同级的文件夹下, 就是不能被启动类扫描到, 如下
 
 - com.itianeru
   - myrule    // 这个文件夹下, 自定义规则
-    - MySelfRule   // 自定义规则类
+    - MySelfRule   // 自定义规则配置类
+    - CustomRule   // 自定义规则类
   - springcloud   // 这个文件夹下为业务代码
     - controller
     - service
     - dao
     - main.java   // 启动类
+
+#### 自定义规则类
+
+```java
+public class CustomRule extends AbstractLoadBalancerRule {
+    private AtomicInteger atomicInteger = new AtomicInteger(0);
+    public CustomRule() {
+    }
+
+    @Override
+    public void initWithNiwsConfig(IClientConfig iClientConfig) {
+
+    }
+
+    @Override
+    public Server choose(Object key) {
+        return this.choose(this.getLoadBalancer(), key);
+    }
+
+    public Server choose(ILoadBalancer lb, Object key) {
+        System.out.println("使用了自定义的轮循算法");
+        List<Server> upList = lb.getReachableServers();
+        int index = getAndIncrement() % upList.size();
+        return upList.get(index);
+    }
+
+    public final int getAndIncrement(){
+        int current;
+        int next;
+        do{
+            current = this.atomicInteger.get();
+            next = current >= Integer.MAX_VALUE ? 0 : current + 1;
+        }while (!this.atomicInteger.compareAndSet(current, next));
+        return next;
+    }
+}
+```
+
+#### 自定义规则配置类
 
 ```java
 @Configuration
@@ -291,8 +398,10 @@ public class MySelfRule {
     
     @Bean
     public IRule myRule(){
-        // 
-        return new RandomRule();
+        // 可以使用Riboon提供的负载均衡算法
+        // return new RandomRule();
+        // 也可以使用自定义的负载均衡算法
+        return new CustomRule();
     }
 }
 ```
@@ -315,7 +424,144 @@ public class OrderMain80 {
 }
 ```
 
+### 超时控制
 
+ribbon默认只等待1秒钟
+
+#### 配置
+
+```java
+@Configuration
+public class ApplicationContextConfig {
+
+    @Bean
+    @LoadBalanced
+    public RestTemplate getRestTemplate(){
+        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
+        simpleClientHttpRequestFactory.setConnectTimeout(10000);
+        simpleClientHttpRequestFactory.setReadTimeout(10000);
+        return new RestTemplate(simpleClientHttpRequestFactory);
+    }
+}
+```
+
+## OpenFeign
+
+### 简介
+
+是一个声明式WebService客户端, 使用Feign能让编写WebService客户端更加简单
+
+它的使用方法是定义一个服务接口然后在上面添加注解,
+
+内置Ribbon
+
+### 对比Feign
+
+|                            Feign                             |                          OpenFeign                           |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+| Feign是SpringCloud组件中一个轻量级RESTFul的http客户端, Feign内置了Ribbon, 用来做客户端负载均衡, 去调用服务注册中心的服务.<br />Feign的使用方式是: 使用Feign的注解定义接口, 调用这个接口, 就可以调用服务注册中心的服务 | OpenFeign是在Feign的基础上支持了SpringMVC的注解, 如@RequestMapping等等, <br />OpenFeign的@FeignCLient可以解析SpringMVC的@RequestMapping注解下的接口, 并通过动态代理的方式产生实现类, 实现类中做负载均衡并调用其他服务 |
+
+### 依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+```
+
+### service
+
+```java
+@Service
+// @FeignClient指定要调用的服务名, 如果同一个服务有多个controller, 需要通过contextId来区分,
+// path为controller的路径
+@FeignClient("CLOUD-PAYMENT-SERVICE", contextId = "PaymentOpenFeignService1", path = "/payment")
+public interface PaymentOpenFeignService {
+	
+    // 与服务的controller路径相同
+    @GetMapping("/{id}")
+    CommonResult<Payment> getPaymentById(@PathVariable("id") Long id);
+
+    @PostMapping
+    CommonResult add(@RequestBody Payment payment);
+}
+```
+
+### 超时控制
+
+OpenFeign的超时控制, 底层还是使用的Ribbon, 所以修改Ribbon的超时设置即可
+
+```yml
+# 设置ribbon客户端超时时间
+ribbon:
+  # 调接口时间
+  ReadTimeout: 5000
+  # 建立连接时间
+  ConnectTimeout: 5000
+```
+
+### 日志增强
+
+OpenFeign提供了日志打印功能, 可以通过调整日志级别, 从而了解OpenFeign中Http请求细节
+
+- **NONE**   默认, 不显示任何日志
+- **BASIC**   仅记录请求方法, URL, 响应状态码及执行时间
+- **HEADERS**   除了BASIC的信息, 还有请求和响应头信息
+- **FULL**  除了HEADERS中定义的信息之外, 还有请求和响应的正文及元数据
+
+### 配置
+
+#### Java配置日志级别
+
+```java
+@Configuration
+public class FeignConfig {
+
+    @Bean
+    Logger.Level feignLoggerLevel(){
+        return Logger.Level.FULL;
+    }
+}
+```
+
+#### yml开启日志
+
+```yml
+# 指定要开启日志的服务
+logging:
+  level:
+  	# 可以指定多个
+    com.itianeru.springcloud.service.PaymentOpenFeignService: debug
+    com.itianeru.springcloud.service.PaymentOpenFeignService2: debug
+```
+
+# 服务降级
+
+## Hytrix(断路器)
+
+已经停止更新.
+
+用于处理分布式系统的延迟和容错的开源库, 在分布式系统里, 许多依赖不可避免的会调用失败, 比如超时, 异常等, Hystrix能保证在一个依赖出问题的情况下, 不会导致整体服务失败, 避免级联故障, 以提高分布式系统的弹性.
+
+断路器本身是一种开关装置, 当某个服务单元发生故障之后, 通过断路器的故障监控, 向调用方返回一个符合预期的, 可处理的备选响应, 而不是长时间等待或者抛出无法处理的异常, 这样就保证了服务调用方的线程不会被长时间, 不必要的占用, 从而避免了故障在分布式系统中的蔓延, 乃至雪崩
+
+### 服务降级(fallback)
+
+- 服务器发生故障时, 立刻返回一个备选方案
+- 哪些情况会触发降级
+  - 程序运行异常
+  - 超时
+  - 服务熔断触发服务降级
+  - 线程池/信号量打满也会导致服务降级
+
+### 服务熔断
+
+- 类比保险丝, 当服务达到最大访问量, 直接拒绝访问, 然后调用服务降级方法, 防止服务器崩溃
+
+### 服务限流
+
+- 秒杀高并发等操作, 将请求排队, 有序进行, 限制流量
 
 # 项目搭建
 
@@ -1598,79 +1844,3 @@ public class OrderMain81 {
     }
 }
 ```
-
-### 在集群Eureka子项目上使用Ribbon
-
-#### 依赖
-
-```xml
-<!-- spring-cloud-starter-netflix-eureka-client客户端依赖已经集成了Ribbon, 无需手动引入 -->
-<dependency>
-    <groupId>org.springframework.cloud</groupId>
-    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
-</dependency>
-```
-
-#### 配置类
-
-```java
-@Configuration
-public class ApplicationContextConfig {
-
-    @Bean
-    @LoadBalanced  // 开启负载均衡
-    public RestTemplate getRestTemplate(){
-        return new RestTemplate();
-    }
-}
-```
-
-#### Controller
-
-```java
-// 使用 restTemplate.getForObject 返回json (常用)
-@RestController
-@RequestMapping("order")
-public class OrderController {
-    @Resource
-    private RestTemplate restTemplate;
-
-    @GetMapping("/{id}")
-    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
-        return restTemplate.getForObject("http://cloud-payment-service/payment/" + id, CommonResult.class);
-    }
-
-    @PostMapping
-    public CommonResult add(Payment payment) {
-        return restTemplate.postForObject("http://cloud-payment-service/payment", payment, CommonResult.class);
-    }
-}
-// 使用 restTemplate.getForEntity 返回对象包含了请求信息
-@RestController
-@RequestMapping("order2")
-public class Order2Controller {
-    @Resource
-    private RestTemplate restTemplate;
-
-    @GetMapping("/{id}")
-    public CommonResult<Payment> getPaymentById(@PathVariable("id") Long id) {
-        ResponseEntity<CommonResult> forEntity = restTemplate.getForEntity("http://cloud-payment-service/payment/" + id, CommonResult.class);
-        if (forEntity.getStatusCode().is2xxSuccessful()){
-            return forEntity.getBody();
-        }else{
-            return new CommonResult<>(500, "失败");
-        }
-    }
-
-    @PostMapping
-    public CommonResult add(Payment payment) {
-        ResponseEntity<CommonResult> forEntity = restTemplate.postForEntity("http://cloud-payment-service/payment", payment, CommonResult.class);
-        if (forEntity.getStatusCode().is2xxSuccessful()){
-            return forEntity.getBody();
-        }else{
-            return new CommonResult<>(500, "失败");
-        }
-    }
-}
-```
-
