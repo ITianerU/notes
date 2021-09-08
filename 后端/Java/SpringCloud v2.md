@@ -1844,3 +1844,220 @@ public class OrderMain81 {
     }
 }
 ```
+
+### 使用Hystrix
+
+#### 支付模块
+
+##### pom文件
+
+```xml
+<dependencies>
+    <!-- 增加Hystris包 -->
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependencies>
+```
+
+##### 配置文件
+
+```yml
+spring:
+  application:
+    name: cloud-payment-hystrix-service
+```
+
+##### java配置
+
+```java
+@Configuration
+@LoadBalanced
+public class ApplicationContextConfig {
+    // 创建RestTemplate的Bean
+    @Bean
+    @LoadBalanced
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+##### Controller
+
+```java
+@RequestMapping("/payment")
+@RestController
+@Slf4j
+public class PaymentController {
+
+    @Resource
+    private PaymentService paymentService;
+
+    @Value("server.port")
+    private String port;
+
+    @GetMapping("/payment/hystrix/ok/{id}")
+    public String paymentInfo_OK(@PathVariable("id")Long id){
+        String res = paymentService.paymentInfo_OK(id);
+        log.info(res);
+        return res;
+    }
+
+    @GetMapping("/payment/hystrix/timeout/{id}")
+    public String paymentInfo_Timeout(@PathVariable("id")Long id){
+        String res = paymentService.paymentInfo_Timeout(id);
+        log.info(res);
+        return res;
+    }
+
+}
+```
+
+##### Service
+
+```java
+@Service
+public class PaymentServiceImpl implements PaymentService {
+
+    @Override
+    public String paymentInfo_OK(Long id) {
+        return "线程池" + Thread.currentThread().getName() + "ok:" + id;
+    }
+
+    @Override
+    // @HystrixCommand指定超时, 或者出错要回调的方法
+    @HystrixCommand(fallbackMethod = "paymentInfo_TimeoutHandler", commandProperties = {
+            // 指定超时时间
+            @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "3000")
+    })
+    public String paymentInfo_Timeout(Long id) {
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "线程池" + Thread.currentThread().getName() + "timeout:" + id;
+    }
+    // 回调的方法
+    public String paymentInfo_TimeoutHandler(Long id){
+        return "线程池" + Thread.currentThread().getName() + "timeout:" + id + "/(ㄒoㄒ)/~~";
+    }
+}
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+@@EnableHystrix   // 使用Hystrix
+public class PaymentHystrixMain8001 {
+    public static void main(String[] args) {
+        SpringApplication.run(PaymentHystrixMain8001.class, args);
+    }
+}
+```
+
+#### 订单模块
+
+##### pom文件
+
+```xml
+<dependency>
+    <!-- 增加Hystris包 -->
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 80
+spring:
+  application:
+    name: cloud-openfeign-hystrix-order-service
+
+eureka:
+  instance:
+    instance-id: cloud-openfeign-hystrix-order-service80  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+    prefer-ip-address: true             # 鼠标放在服务名上, 左下角显示服务ip
+  client:
+    register-with-eureka: true  # 表示是否将服务注册到Eureka Server中, 默认为true
+    fetch-registry: true        # 是否从EurekaServer抓取已有的注册信息, 默认为true, 集群必须设置为true才能使用ribbon进行负载均衡, 单节点可以为false
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+
+
+# 开启服务降级
+feign:
+  hystrix:
+    enabled: true
+```
+
+##### Controller
+
+```java
+@RestController
+@RequestMapping("order")
+@Slf4j
+public class OrderController {
+
+    @Resource
+    private PaymentOpenFeignService paymentOpenFeignService;
+
+    @GetMapping("/hystrix/ok/{id}")
+    public String paymentInfo_OK(@PathVariable("id")Long id){
+        String res = paymentOpenFeignService.paymentInfo_OK(id);
+        log.info(res);
+        return res;
+    }
+
+    @GetMapping("/hystrix/timeout/{id}")
+    // 指定服务降级的回调方法
+    @HystrixCommand(fallbackMethod = "paymentInfo_TimeoutHandler", commandProperties = {
+            @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "1500")
+    })
+    public String paymentInfo_Timeout(@PathVariable("id")Long id){
+        String res = paymentOpenFeignService.paymentInfo_Timeout(id);
+        log.info(res);
+        return res;
+    }
+
+    public String paymentInfo_TimeoutHandler(Long id){
+        return "Order线程池" + Thread.currentThread().getName() + "timeout:" + id + "/(ㄒoㄒ)/~~";
+    }
+}
+```
+
+##### service
+
+```java
+@Service
+@FeignClient(value = "CLOUD-PAYMENT-HYSTRIX-SERVICE", contextId = "PaymentOpenFeignService", path = "/payment")
+public interface PaymentOpenFeignService {
+
+    @GetMapping("/hystrix/ok/{id}")
+    String paymentInfo_OK(@PathVariable("id")Long id);
+
+    @GetMapping("/hystrix/timeout/{id}")
+    String paymentInfo_Timeout(@PathVariable("id")Long id);
+}
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+@EnableFeignClients
+@EnableHystrix
+public class OpenFeignHystrixOrderMain80 {
+    public static void main(String[] args) {
+        SpringApplication.run(OpenFeignHystrixOrderMain80.class, args);
+    }
+}
+```
+
+### 
