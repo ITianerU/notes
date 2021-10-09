@@ -85,12 +85,17 @@ Nginx是服务器负载均衡, 客户端所有请求都会交给Nginx, 然后由
 
 Ribbon本地负载均衡, 在调用微服务接口时候, 会在注册中心上获取注册信息服务列表之后缓存到JVM本地, 从而在本地实现RPC远程服务调用技术,属于进程内的负载均衡
 
+## 什么是总线
+
+在微服务架构的系统中, 通常会使用<span style="color:red">轻量级的消息代理</span>来构建一个<span style="color:red">共用的消息主题</span>, 并让系统中的所有微服务实例都连接上来, 由于<span style="color:red">该主题中产生的消息会被所有实例监听和消费, 所以称它为消息总线</span>
+
 # 文档
 
 - https://spring.io/projects/spring-cloud#learn  (SpringCloud文档)
 - https://www.bookstack.cn/read/spring-cloud-docs/docs-index.md  (中文文档. 有点过时)
 - https://docs.spring.io/spring-boot/docs  (SpringBoot文档)
 - https://www.consul.io/docs/intro (consul文档)
+- https://github.com/alibaba/spring-cloud-alibaba/blob/master/README-zh.md (spring cloud alibaba文档)
 
 # 版本选择
 
@@ -247,6 +252,8 @@ Consul是一套开源的分布式服务发现和配置的管理系统, 使用go�
 |  Eureka   | Java |  AP  |  可配置支持  |      有页面      |     已集成      |
 |  Consul   |  Go  |  CP  |     支持     |      有页面      |     已集成      |
 | Zookeeper | Java |  CP  |     支持     |      无页面      |     已集成      |
+
+## Nacos
 
 # 服务调用
 
@@ -536,9 +543,13 @@ logging:
     com.itianeru.springcloud.service.PaymentOpenFeignService2: debug
 ```
 
+### 自定义负载均衡规则
+
+因为OpenFeign底层使用的还是Ribbon, 所以负载均衡的配置和Ribbon一样
+
 # 服务降级
 
-## Hytrix(断路器)
+## Hytrix
 
 已经停止更新.
 
@@ -547,6 +558,8 @@ logging:
 断路器本身是一种开关装置, 当某个服务单元发生故障之后, 通过断路器的故障监控, 向调用方返回一个符合预期的, 可处理的备选响应, 而不是长时间等待或者抛出无法处理的异常, 这样就保证了服务调用方的线程不会被长时间, 不必要的占用, 从而避免了故障在分布式系统中的蔓延, 乃至雪崩
 
 ### 服务降级(fallback)
+
+常用于消费端
 
 - 服务器发生故障时, 立刻返回一个备选方案
 - 哪些情况会触发降级
@@ -557,13 +570,392 @@ logging:
 
 ### 服务熔断
 
-- 类比保险丝, 当服务达到最大访问量, 直接拒绝访问, 然后调用服务降级方法, 防止服务器崩溃
+常用于服务端
+
+- 类比保险丝, 当服务达到最大访问量, 直接拒绝访问, 然后调用服务降级方法, 防止服务器崩溃, 等检测到服务正常会自己恢复
 
 ### 服务限流
 
 - 秒杀高并发等操作, 将请求排队, 有序进行, 限制流量
 
-# 项目搭建
+### 服务监控
+
+#### 仪表盘
+
+##### 依赖
+
+```xml
+<dependency>
+    <!-- 增加Hystris-dashboard包 -->
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 9001
+hystrix:
+  dashboard:
+    # 指定允许监听的ip
+    proxy-stream-allow-list: localhost
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+@EnableHystrixDashboard
+public class HystrixDashbordMain9001 {
+    public static void main(String[] args) {
+        SpringApplication.run(HystrixDashbordMain9001.class, args);
+    }
+}
+```
+
+##### 访问地址
+
+- http://localhost:9001/hystrix
+- 输入要监控的服务ip  http://要监控的服务ip/hystrix.stream
+
+#### 被监控的服务
+
+##### 配置类
+
+```java
+@Bean
+public ServletRegistrationBean getServlet(){
+    HystrixMetricsStreamServlet streamServlet = new HystrixMetricsStreamServlet();
+    ServletRegistrationBean<HystrixMetricsStreamServlet> registrationBean = new ServletRegistrationBean(streamServlet);
+    registrationBean.setLoadOnStartup(1);
+    registrationBean.addUrlMappings("/hystrix.stream");
+    registrationBean.setName("HystrixMetricsStreamServlet");
+    return registrationBean;
+}
+```
+
+# 服务网关
+
+## zuul
+
+已弃用
+
+## gateway
+
+SpringCloud Gateway是基于WebFlux框架实现的, 而WebFlux框架底层则使用了高性能的Reactor模式通信框架Netty,
+
+Gateway是基于**异步非阻塞模型**进行开发的, 有很高的性能
+
+### Route(路由)配置
+
+#### yml配置
+
+```yml
+spring:
+  application:
+    name: cloud-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: payment_routh                      # 路由的ID， 没有固定的规则， 但是要求唯一， 建议配合服务名
+          uri: http://localhost:8001             # 匹配后的提供服务的路由地址
+          predicates:
+            - Path=/payment/get/**               # 断言， 路径相匹配的进行路由
+        - id: payment_routh2
+          uri: http://localhost:8001
+          predicates:
+            - Path=/payment/timeout/**
+```
+
+#### java配置(不推荐)
+
+```java
+@Configuration
+public class GateWayConfig {
+    @Bean
+    public RouteLocator getRoutes(RouteLocatorBuilder routeLocatorBuilder){
+        RouteLocatorBuilder.Builder routes = routeLocatorBuilder.routes();
+        //               路由id唯一                      断言predicates                  路由地址
+        routes.route("payment_routh", r -> r.path("/payment/get/**").uri("http://localhost:8001")).build();
+        routes.route("payment_routh2", r -> r.path("/payment/timeout/**").uri("http://localhost:8001")).build();
+        return routes.build();
+    }
+}
+```
+
+#### 动态路由配置
+
+```yml
+spring:
+  application:
+    name: cloud-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true                          # 开启从注册中心动态创建路由功能, 利用微服务名进行路由
+      routes:
+        - id: payment_routh                      # 路由的ID， 没有固定的规则， 但是要求唯一， 建议配合服务名
+          uri: lb://CLOUD-PAYMENT-SERVICE        # url指定服务集群的服务名, lb表示使用负载均衡
+          predicates:
+            - Path=/payment/get/**               # 断言， 路径相匹配的进行路由
+        - id: payment_routh2
+          uri: lb://CLOUD-PAYMENT-SERVICE
+          predicates:
+            - Path=/payment/timeout/**
+```
+
+### Predicate(断言)配置
+
+#### After | Before | Between
+
+```yml
+predicates:
+	- Path=/payment/timeout/**
+	- After=2021-09-14T16:42:12.958+08:00[Asia/Shanghai]   # 在该时间之后服务生效
+	- Before=2021-09-14T16:42:12.958+08:00[Asia/Shanghai]   # 在该时间之前服务生效
+	- Between=2021-09-14T16:42:12.958+08:00[Asia/Shanghai],2022-09-14T16:42:12.958+08:00[Asia/Shanghai]   # 在两个时间之间服务生效
+```
+
+##### 可通过如下方法获取时间格式
+
+```java
+ZonedDateTime zbj = ZonedDateTime.now();
+System.out.println(zbj);
+```
+
+#### Cookie
+
+```yml
+predicates:
+	- Path=/payment/timeout/**
+	- Cookie=token,token\d+ # 请求中必须存在一个 cookie 的key 是 token 的，且值必须是 token 后面加上一个数子才匹配的上，否则匹配不上
+```
+
+##### 测试
+
+```bash
+# cmd 运行
+curl http://localhost:9527/payment/get/1 --cookie "token=token123456"
+```
+
+#### Header
+
+```yml
+predicates:
+	- Path=/payment/timeout/**
+	- Header=propName,propValue # 请求头中必须存在一个propName=propValue
+```
+
+##### 测试
+
+```bash
+# cmd 运行
+curl http://localhost:9527/payment/get/1 -H "propName:propValue"
+```
+
+#### Host
+
+```yml
+predicates:
+	- Path=/payment/timeout/**
+	- Host=**.x.com   # 请求头Host的值必须要匹配**.x.com
+```
+
+##### 测试
+
+```bash
+# cmd 运行
+curl http://localhost:9527/payment/get/1 -H "host:sb.x.com"
+```
+
+#### Method
+
+```yml
+predicates:
+	- Path=/payment/timeout/**
+	- Method=GET   # 指定get请求
+```
+
+##### 测试
+
+```bash
+# cmd 运行
+curl http://localhost:9527/payment/get/1 -X GET 
+```
+
+#### Query
+
+```yml
+predicates:
+	- Path=/payment/timeout/**
+	- Query=name   # 指定请求必须有name参数
+```
+
+##### 测试
+
+```bash
+# cmd 运行
+curl http://localhost:9527/payment/get/1?name=laowang
+```
+
+#### Weight
+
+```yml
+- id: payment_routh_High                   
+    uri: http://localhost:8001            # 配置同一服务的不同服务地址
+    predicates:
+    - Path=/payment/get/**                 
+    - Weight=group1,8                     # 配置权重 80%
+- id: payment_routh_low                     
+    uri: http://localhost:8002            
+    predicates:
+    - Path=/payment/get/**             
+    - Weight=group1,2                     # 配置权重 20%
+```
+
+### Filter(过滤器)配置
+
+#### 生命周期
+
+- pre
+- post
+
+#### 种类
+
+- GatewayFilter  单一
+- GlobalFilter 全局
+
+#### 自定义过滤器
+
+```java
+@Component
+@Slf4j
+public class MyLogGateWayFilter implements GlobalFilter, Ordered {
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        Object username = exchange.getRequest().getQueryParams().get("username");
+        if (StringUtils.isEmpty(username)){
+            log.error("非法用户");
+            // 设置拒绝访问状态码
+            exchange.getResponse().setStatusCode(HttpStatus.NOT_ACCEPTABLE);
+            return exchange.getResponse().setComplete();
+        }
+        log.info(username.toString());
+        // 通过
+        return chain.filter(exchange);
+    }
+
+    @Override
+    public int getOrder() {
+        // 数字越小, 优先级越高, 指的是多个过滤器的执行顺序
+        return 0;
+    }
+}
+```
+
+# 服务配置
+
+随着项目中模块越来越多, 配置文件也越来越多, 需要一个统一配置中心, 集中, 动态配置,
+
+- 服务端
+
+  服务端通过从远程仓库, 获取配置文件, 对外暴露配置文件
+
+- 客户端
+
+  客户端不从远程仓库获取配置文件, 从服务端获取配置文件,
+
+  客户端使用**bootstrap.yml**配置文件, 相对与**application.yml**, **bootstrap.yml**是系统级的优先级更高,
+
+## Config
+
+### 读取方式
+
+- /{ lable }/{ application }-{ profile }.yml
+
+```bash
+# master 分支
+# 开发环境
+http://localhost:3344/master/config-dev.yml
+# 测试环境
+http://localhost:3344/master/config-test.yml
+# dev分支
+http://localhost:3344/dev/config-dev.yml
+```
+
+### 手动触发动态更新
+
+客户端从配置中心读取配置文件, 配置文件远程修改后, 无法自动刷新, 需要手动触发, 调用触发的接口
+
+```
+http://hostname:port/actuator/refresh
+```
+
+### 消息总线 
+
+每个微服务订阅同一条消息, 当推送消息后, 触发配置更新, 需要借助消息中间件, 目前仅支持RabbitMQ 和kafka.
+
+利用消息总线触发一个服务端的/bus/refresh端点, 而刷新所有客户端的配置
+
+#### RabbitMQ
+
+##### 安装
+
+请查看docker笔记
+
+# 消息驱动
+
+当一个项目使用了多种MQ, 开发者不一定会每个MQ, SpringCloud Stream屏蔽了底层消息中间件的差异, 降低切换成本, 统一消息的编程模型
+
+**目前仅支持RabbitMQ和Kafka**
+
+## 重复消费
+
+默认是广播模式,  同一个group下的全部服务, 只有一个能消费, 不同group都会消费到 
+
+默认分组为随机分配的流水号, 每个服务都不同, 
+
+通一分组的默认消费策略是轮循
+
+## 持久化消费
+
+如果一个服务没有指定分组, 当服务宕机, 再重启, 这期间的MQ消息, 该服务不会继续消费
+
+指定group的服务, 会消费掉宕机期间的MQ
+
+# 链路追踪
+
+## Sleuth
+
+在微服务框架中, 一个由客户端发起请求的后端系统会经过多个不同的服务节点调用来协同产生最后的请求结果, 每一个前端请求都会形成一条复杂的分布式服务调用链路, 链路中的任何一环出现高延时或错误都会引起整个请求最后的失败,
+
+通过整合Zipkin实现
+
+### Zipkin
+
+一条链路通过Trace Id唯一标识, Span标识发起请求的信息, 各Span通过parent id关联起来
+
+```text
+Span id = A      ->    Span id = B      -> Span id = C
+Parent id = null       Parent id = A       Parent id = B
+```
+
+#### 安装
+
+```bash
+# 官网 支持docker
+https://zipkin.io/pages/quickstart.html
+
+```
+
+# 项目示例
 
 ## 创建父项目
 
@@ -1917,9 +2309,15 @@ public class PaymentController {
 
 ```java
 @Service
+// 设置这个类下, 全部方法默认的服务降级回调方法
+@DefaultProperties(defaultFallback = "default_paymentInfo_TimeoutHandler", commandProperties = {
+    @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "1000")
+})
 public class PaymentServiceImpl implements PaymentService {
 
     @Override
+    // 当指定全局的服务降级方法, 哪个方法需要使用, 需要加该注解
+    @HystrixCommand
     public String paymentInfo_OK(Long id) {
         return "线程池" + Thread.currentThread().getName() + "ok:" + id;
     }
@@ -1942,6 +2340,11 @@ public class PaymentServiceImpl implements PaymentService {
     public String paymentInfo_TimeoutHandler(Long id){
         return "线程池" + Thread.currentThread().getName() + "timeout:" + id + "/(ㄒoㄒ)/~~";
     }
+    // 默认的服务降级回调方法
+    // 全局的方法, 不能有入参
+    public String default_paymentInfo_TimeoutHandler(){
+        return "/(ㄒoㄒ)/~~";
+    }
 }
 ```
 
@@ -1958,7 +2361,9 @@ public class PaymentHystrixMain8001 {
 }
 ```
 
-#### 订单模块
+#### 订单模块(方式1)
+
+在controller中开启服务降级
 
 ##### pom文件
 
@@ -1988,12 +2393,13 @@ eureka:
     fetch-registry: true        # 是否从EurekaServer抓取已有的注册信息, 默认为true, 集群必须设置为true才能使用ribbon进行负载均衡, 单节点可以为false
     service-url:
       defaultZone: http://eureka7001.com:7001/eureka/
-
-
-# 开启服务降级
-feign:
-  hystrix:
-    enabled: true
+ 
+ # 设置ribbon客户端超时时间
+ribbon:
+  # 调接口时间
+  ReadTimeout: 5000
+  # 建立连接时间
+  ConnectTimeout: 5000
 ```
 
 ##### Controller
@@ -2002,6 +2408,10 @@ feign:
 @RestController
 @RequestMapping("order")
 @Slf4j
+// 指定这个类的服务降级的回调方法
+@DefaultProperties(defaultFallback = "default_paymentInfo_TimeoutHandler", commandProperties = {
+        @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "3000")
+})
 public class OrderController {
 
     @Resource
@@ -2024,9 +2434,13 @@ public class OrderController {
         log.info(res);
         return res;
     }
-
+	
     public String paymentInfo_TimeoutHandler(Long id){
         return "Order线程池" + Thread.currentThread().getName() + "timeout:" + id + "/(ㄒoㄒ)/~~";
+    }
+    // 全局的降级方法, 是无参
+    public String default_paymentInfo_TimeoutHandler(){
+        return "/(ㄒoㄒ)/~~";
     }
 }
 ```
@@ -2060,4 +2474,991 @@ public class OpenFeignHystrixOrderMain80 {
 }
 ```
 
-### 
+#### 订单模块(方式2 推荐)
+
+在Feign的服务类中, 开启服务降级, 与Controller解耦, 只适用于消费端
+
+##### pom文件
+
+```xml
+<dependency>
+    <!-- 增加Hystris包 -->
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 80
+spring:
+  application:
+    name: cloud-openfeign-hystrix-order-service
+
+eureka:
+  instance:
+    instance-id: cloud-openfeign-hystrix-order-service80  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+    prefer-ip-address: true             # 鼠标放在服务名上, 左下角显示服务ip
+  client:
+    register-with-eureka: true  # 表示是否将服务注册到Eureka Server中, 默认为true
+    fetch-registry: true        # 是否从EurekaServer抓取已有的注册信息, 默认为true, 集群必须设置为true才能使用ribbon进行负载均衡, 单节点可以为false
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+
+
+# 如果feign.hystrix.enabled = true,  使用注解配置的超时时间会无效
+feign:
+  hystrix:
+    enabled: true
+# 将会使用如下配置的时间
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 5000
+ 
+ # 设置ribbon客户端超时时间
+ribbon:
+  # 调接口时间
+  ReadTimeout: 5000
+  # 建立连接时间
+  ConnectTimeout: 5000
+```
+
+##### Controller
+
+```java
+@RestController
+@RequestMapping("order")
+@Slf4j
+public class OrderController {
+
+    @Resource
+    private PaymentOpenFeignService paymentOpenFeignService;
+
+    @GetMapping("/hystrix/ok/{id}")
+    public String paymentInfo_OK(@PathVariable("id")Long id){
+        String res = paymentOpenFeignService.paymentInfo_OK(id);
+        log.info(res);
+        return res;
+    }
+    public String paymentInfo_Timeout(@PathVariable("id")Long id){
+        String res = paymentOpenFeignService.paymentInfo_Timeout(id);
+        log.info(res);
+        return res;
+    }
+}
+```
+
+##### service
+
+```java
+@Service
+@FeignClient(value = "CLOUD-PAYMENT-HYSTRIX-SERVICE", contextId = "PaymentOpenFeignService", path = "/payment", 
+             // 指定服务降级类
+             fallback = PaymentOpenFeignFallbackService.class)
+public interface PaymentOpenFeignService {
+
+    @GetMapping("/hystrix/ok/{id}")
+    String paymentInfo_OK(@PathVariable("id")Long id);
+
+    @GetMapping("/hystrix/timeout/{id}")
+    String paymentInfo_Timeout(@PathVariable("id")Long id);
+}
+```
+
+##### 服务降级类
+
+```java
+@Component
+// 实现要降级的接口
+public class PaymentOpenFeignFallbackService implements PaymentOpenFeignService{
+    @Override
+    public String paymentInfo_OK(Long id) {
+        return "ok 超时了";
+    }
+
+    @Override
+    public String paymentInfo_Timeout(Long id) {
+        return "timeout 超时了";
+    }
+}
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+@EnableFeignClients
+@EnableHystrix
+public class OpenFeignHystrixOrderMain80 {
+    public static void main(String[] args) {
+        SpringApplication.run(OpenFeignHystrixOrderMain80.class, args);
+    }
+}
+```
+
+### 使用Gateway
+
+#### pom文件
+
+```xml
+<!-- 注： 不能加spring-boot-starter-web 和 spring-boot-starter-actuator 否则无法启动项目 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-gateway</artifactId>
+</dependency>
+```
+
+#### 配置文件
+
+```yml
+server:
+  port: 9527
+spring:
+  application:
+    name: cloud-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: payment_routh                      # 路由的ID， 没有固定的规则， 但是要求唯一， 建议配合服务名
+          uri: http://localhost:8001             # 匹配后的提供服务的路由地址
+          predicates:
+            - Path=/payment/get/**               # 断言， 路径相匹配的进行路由
+        - id: payment_routh2
+          uri: http://localhost:8001
+          predicates:
+            - Path=/payment/timeout/**
+
+eureka:
+  instance:
+    instance-id: cloud-gateway-service9527
+  client:
+    register-with-eureka: true  # 表示是否将服务注册到Eureka Server中, 默认为true
+    fetch-registry: true        # 是否从EurekaServer抓取已有的注册信息, 默认为true, 集群必须设置为true才能使用ribbon进行负载均衡, 单节点可以为false
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+```
+
+#### 启动类
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+public class GateWayMain9527 {
+    public static void main(String[] args) {
+        SpringApplication.run(GateWayMain9527.class, args);
+    }
+}
+```
+
+### 使用Config配置中心
+
+#### 服务端
+
+##### pom文件
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-config-server</artifactId>
+</dependency>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 3344
+
+spring:
+  application:
+    name: cloud-config-center
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://gitee.com/ITianerU/configuration_center.git      # 创建的git仓库的地址
+          search-paths:
+            - springcloud-config     # 搜索的仓库的目录, 里面创建consumer-dev.properties
+          password: 密码
+          username: 用户名
+      label: master             # 指定分支
+
+eureka:
+  instance:
+    instance-id: cloud-config-center3344  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+  client:
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+@EnableConfigServer
+public class ConfigCenterMain3344 {
+    public static void main(String[] args) {
+        SpringApplication.run(ConfigCenterMain3344.class, args);
+    }
+}
+```
+
+##### 测试
+
+```bash
+http://localhost:3344/master/config-dev.yml
+```
+
+#### 客户端
+
+##### pom文件
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+</dependency>
+```
+
+##### 配置文件
+
+bootstrap.yml
+
+```yml
+server:
+  port: 3355
+
+spring:
+  application:
+    name: config-client
+  cloud:
+    config:
+      label: master   # 分支名称
+      name: config    # 配置文件名称
+      profile: dev    # 环境后缀
+      uri: http://localhost:3344    # 配置中心地址
+
+eureka:
+  instance:
+    instance-id: config-client3355  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+  client:
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+      
+# 暴露监控端点, 用于动态刷新
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+```
+
+##### 启动类
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+public class ConfigClientMain3355 {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ConfigClientMain3355.class, args);
+    }
+}
+```
+
+##### controller
+
+```java
+@RefreshScope    // 开启动态刷新注解
+@RestController
+@RequestMapping("config")
+public class ConfigClientController {
+    // 从配置中心获取的配置文件中注入
+    @Value("${hello}")
+    private String msg;
+
+    @GetMapping
+    public String getConfigInfo(){
+        return msg;
+    }
+}
+```
+
+##### 测试
+
+```bash
+http://localhost:3355/config
+```
+
+##### 手动触发动态更新
+
+```bash
+# 使用post请求
+curl -X POST "http://localhost:3355/actuator/refresh"
+```
+
+#### 使用消息总线
+
+##### 服务端
+
+###### 依赖
+
+```xml
+<!-- 消息总线依赖, 内部整合了RabbitMQ的支持 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+</dependency>
+```
+
+###### 配置文件
+
+```yml
+# rabbitmq相关配置
+spring:
+  rabbitmq:
+    host: locahost
+    port: 5672
+    username: root
+    password: 123456
+# 暴露bus刷新配置的端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "bus-refresh"
+```
+
+##### 客户端
+
+###### 依赖
+
+```xml
+<!-- 消息总线依赖, 内部整合了RabbitMQ的支持 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+</dependency>
+```
+
+###### 配置文件
+
+```yml
+# rabbitmq相关配置
+spring:
+  rabbitmq:
+    host: locahost
+    port: 5672
+    username: root
+    password: 123456
+```
+
+##### 触发服务端更新
+
+###### 广播模式
+
+通知全部服务端
+
+```bash
+curl -X POST "http://localhost:3344/actuator/bus-refresh"
+```
+
+###### 定点通知
+
+通知指定服务器
+
+```bash
+curl -X POST "http://localhost:3344/actuator/bus-refresh/服务名:端口号"
+```
+
+### 使用Stream消息驱动
+
+#### 生产者
+
+##### 依赖
+
+```xml
+<!-- rabbit整合stream -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+</dependency>
+<!-- kafka整合stream -->
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.cloud</groupId>-->
+<!--            <artifactId>spring-cloud-starter-stream-kafka</artifactId>-->
+<!--        </dependency>-->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-devtools</artifactId>
+    <scope>runtime</scope>
+    <optional>true</optional>
+</dependency>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 8801
+spring:
+  application:
+    name: rabbitmq-provider
+  rabbitmq:
+    host: localhost
+    port: 
+    username: root
+    password: 123456
+  cloud:
+    stream:
+      binders:              # 在此处配置要绑定的rabbitmq的服务信息
+        defaultRabbit1:     # 表示子定义的名称, 用于binding整合吗可以有多个
+          type: rabbit      # 消息组件类型
+        defaultRabbit2:
+          type: rabbit
+      bindings:             # 服务的整合处理
+        output1:            # 这个名字是一个通道的名称, 自定义的名称, 可以有多个
+          destination: itianeru1Exchange          # 表示要使用的Exchange名称定义 类似topic
+          content-type: application/json          # 消息类型, 文本则要设置"text/plain"
+          binder: defaultRabbit1                  # 这里使用的是binders下面的自定义binder
+        output2:
+          destination: itianeru2Exchange
+          content-type: application/json
+          binder: defaultRabbit2
+eureka:
+  instance:
+    instance-id: rabbitmq-provider8001  # 这里配置微服务名称, 用于在Eureka的监控页面显示
+  client:
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+
+```
+
+##### Service
+
+```java
+// 配置通道的接口
+@Component
+public interface OutputInterface {
+    // 指定选择通道output1
+    @Output("output1")
+    MessageChannel output1();
+	// 指定选择通道output2
+    @Output("output2")
+    MessageChannel output2();
+}
+
+// 接口
+public interface IMessageProvider {
+    String send1();
+    String send2();
+}
+
+//  实现类
+@EnableBinding(OutputInterface.class)   // 定义消息的推送管道
+public class MessageProviderImpl implements IMessageProvider {
+	
+    // 导入通道选择器
+    @Resource
+    private OutputInterface outputInterface;
+
+    @Override
+    public String send1() {
+        String uuid = UUID.randomUUID().toString();
+        boolean send = outputInterface.output1().send(MessageBuilder.withPayload(uuid).build());
+        System.out.println(send);
+        return uuid;
+    }
+    @Override
+    public String send2() {
+        String uuid = UUID.randomUUID().toString();
+        boolean send = outputInterface.output2().send(MessageBuilder.withPayload(uuid).build());
+        System.out.println(send);
+        return uuid;
+    }
+}
+```
+
+##### controller
+
+```java
+@RestController
+@RequestMapping("stream")
+public class SendMessageController {
+
+    @Resource
+    private IMessageProvider messageProvider;
+
+    @GetMapping("send1")
+    public String sendMessage1(){
+        return messageProvider.send1();
+    }
+
+    @GetMapping("send2")
+    public String sendMessage2(){
+        return messageProvider.send2();
+    }
+}
+```
+
+#### 消费者
+
+##### 依赖
+
+同生产者一样
+
+##### 配置文件
+
+```yml
+server:
+  port: 8802
+spring:
+  application:
+    name: rabbitmq-consumer
+  rabbitmq:
+    host: localhost
+    port:
+    username: root
+    password: 123456
+  cloud:
+    stream:
+      binders:              
+        defaultRabbit1:     
+          type: rabbit      
+        defaultRabbit2:
+          type: rabbit
+      bindings:             
+        input1:                              # 消费的通道
+          destination: itianeru1Exchange     # 消费的topic, 要和生产的一直
+          content-type: application/json         
+          binder: defaultRabbit1      
+          group: itianeru1                   # 指定分组, 如果不指定, 默认每个服务都独自一组
+        input2:
+          destination: itianeru2Exchange
+          content-type: application/json
+          binder: defaultRabbit2
+          group: itianeru1
+eureka:
+  instance:
+    instance-id: rabbitmq-consumer8002  
+  client:
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka/
+```
+
+##### Service
+
+```java
+// 配置通道的接口
+@Component
+public interface InputInterface {
+
+    String INPUT1 = "input1";
+    String INPUT2 = "input2";
+
+    @Input(INPUT1)
+    MessageChannel input1();
+
+    @Input(INPUT2)
+    MessageChannel input2();
+}
+
+// 接收消息的结构
+public interface IMessageConsumer {
+    void receive1(Message<String> message);
+    void receive2(Message<String> message);
+}
+
+@EnableBinding(InputInterface.class)   // 绑定消息的接收管道
+public class MessageConsumerImpl implements IMessageConsumer {
+
+    @Value("${server.port}")
+    private String port;
+
+    @Override
+    @StreamListener(InputInterface.INPUT1)  // 开启监听器, 并指定接收哪个个topic
+    public void receive1(Message<String> message) {
+        System.out.println("receive1" + message.getPayload() + ":" + port);
+    }
+    @Override
+    @StreamListener(InputInterface.INPUT2)
+    public void receive2(Message<String> message) {
+        System.out.println("receive2" + message.getPayload() + ":" + port);
+    }
+}
+```
+
+### 使用Sleuth链路追踪
+
+#### 生产者
+
+##### 依赖
+
+```xml
+<!-- 添加依赖 链路追踪 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-zipkin</artifactId>
+</dependency>
+```
+
+##### 配置文件
+
+```yml
+server:
+  port: 80
+spring:
+  application:
+    name:  cloud-payment-service
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 1   # 采样率值, 介于0-1, 1表示全部采集, 常用0.5
+```
+
+##### controller
+
+```java
+@RequestMapping("/payment")
+@RestController
+@Slf4j
+public class PaymentController {
+
+    @GetMapping("zipkin")
+    public String zipkin(){
+        return "zipkin";
+    }
+}
+```
+
+#### 消费者
+
+##### 依赖
+
+同生产者一样
+
+##### 配置文件
+
+```yml
+server:
+  port: 8001
+spring:
+  application:
+    name:  cloud-payment-service
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 1   # 采样率值, 介于0-1, 1表示全部采集, 常用0.5
+```
+
+##### controller
+
+```java
+@RestController
+@RequestMapping("order")
+public class OrderController {
+    @GetMapping("zipkin")
+    public String zipkin(){
+        return restTemplate.getForObject("http://cloud-payment-service/payment/zipkin", String.class);
+    }
+}
+```
+
+# alibaba版本示例
+
+## 父项目
+
+### pom文件
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.itianeru</groupId>
+    <artifactId>SpringCloudAlibabaDemo</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <modules>
+        <module>cloudalibaba-provider-payment</module>
+        <module>cloudalibaba-consumer-order</module>
+    </modules>
+
+    <!-- 统一管理jar包 -->
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <junit.version>4.12</junit.version>
+        <log4j.version>1.2.17</log4j.version>
+        <lombok.version>1.16.18</lombok.version>
+        <mysql.version>8.0.26</mysql.version>
+        <druid.version>1.1.16</druid.version>
+        <mybatis.spring.boot.version>1.3.0</mybatis.spring.boot.version>
+    </properties>
+
+    <!-- 子模块继承之后, 提供作用: 锁定版本 + 子module不用写groupId和version -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- spring boot 2.3.12.RELEASE -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>2.3.12.RELEASE</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- spring cloud Hoxton.SR12 -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>Hoxton.SR12</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- spring cloud alibaba 2.2.6 -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>2.2.6.RELEASE</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- mysql -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${mysql.version}</version>
+            </dependency>
+            <!-- druid -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid-spring-boot-starter</artifactId>
+                <version>${druid.version}</version>
+            </dependency>
+            <!-- mybatis -->
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>${mybatis.spring.boot.version}</version>
+            </dependency>
+            <!-- junit -->
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+            </dependency>
+            <!-- log4j -->
+            <dependency>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>2.3.12.RELEASE</version>
+                <configuration>
+                    <fork>true</fork>
+                    <addResources>true</addResources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+## 使用nacos
+
+### 生产者
+
+#### pom文件
+
+```xml
+<!-- 使用nacos -->
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-devtools</artifactId>
+    <scope>runtime</scope>
+    <optional>true</optional>
+</dependency>
+```
+
+#### 配置文件
+
+```yml
+server:
+  port: 9001
+
+spring:
+  application:
+    name: nacos-payment-provider
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848   # nacos地址
+
+# 暴露监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+```
+
+#### 启动类
+
+```java
+@SpringBootApplication
+@EnableDiscoveryClient
+public class NacosPaymentMain {
+
+    public static void main(String[] args) {
+        SpringApplication.run(NacosPaymentMain.class, args);
+    }
+}
+```
+
+#### controller
+
+```java
+@RestController
+@RequestMapping("payment")
+public class PaymentController {
+
+    @Value("${server.port}")
+    private String port;
+
+    @GetMapping("{id}")
+    public String getPayment(@PathVariable("id")Integer id){
+        return String.format("nacos registry, serverPort%s:%d", port, id);
+    }
+}
+```
+
+### 消费者
+
+#### pom文件
+
+```xml
+<!-- 略, 同生产者 -->
+```
+
+#### 配置文件
+
+```yml
+server:
+  port: 80
+
+spring:
+  application:
+    name: nacos-order-consumer
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848   # nacos地址
+
+# 消费者将要去访问的微服务名称(注册成功进nacos的微服务提供者)
+service-url:
+  nacos-payment-service: http://nacos-payment-provider
+```
+
+#### 启动类
+
+```java
+@SpringBootApplication
+@EnableDiscoveryClient
+public class NacosOrderMain {
+
+    public static void main(String[] args) {
+        SpringApplication.run(NacosOrderMain.class, args);
+    }
+}
+```
+
+#### 配置类
+
+```java
+@Configuration
+public class ApplicationContextConfig {
+
+    @Bean
+    @LoadBalanced
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+#### controller
+
+```java
+@RestController
+@RequestMapping("order")
+public class OrderController {
+
+    @Resource
+    private RestTemplate restTemplate;
+
+    @Value("${service-url.nacos-payment-service}")
+    private String paymentServiceUrl;
+
+    @GetMapping("{id}")
+    public String getPayment(@PathVariable("id")Integer id){
+        return restTemplate.getForObject(paymentServiceUrl + "/payment/" + id, String.class);
+    }
+}
+```

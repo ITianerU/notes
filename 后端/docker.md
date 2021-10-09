@@ -886,3 +886,1347 @@ docker run -d -p 8500:8500 --name consul consul agent -server -bootstrap -ui -no
 docker exec -it consul /bin/sh
 ```
 
+### RabbitMQ
+
+#### 下载
+
+```bash
+# 不带web控制台的版本
+docker pull rabbitmq
+# 带web控制台的版本
+docker pull rabbitmq:3.9.5-management
+```
+
+#### 创建容器
+
+```bash
+docker run -d -p 15672:15672  -p  5672:5672  -e RABBITMQ_DEFAULT_USER=root -e RABBITMQ_DEFAULT_PASS=123456 --name rabbitmq rabbitmq
+```
+
+- -d 后台运行
+- -p 隐射端口
+- –name 指定rabbitMQ名称
+- RABBITMQ_DEFAULT_USER 指定用户账号
+- RABBITMQ_DEFAULT_PASS 指定账号密码
+
+#### 控制台
+
+```bash
+# 如果不指定账号密码, 默认为guest/guest
+http://localhost:15672/
+```
+
+### Zipkin
+
+#### 下载
+
+```bash
+docker pull openzipkin/zipkin
+```
+
+#### 创建容器
+
+```bash
+docker run -d -p 9411:9411 openzipkin/zipkin
+```
+
+#### 控制台
+
+```bash
+http://your_host:9411
+```
+
+### Nacos
+
+#### 下载
+
+```bash
+docker pull nacos/nacos-server
+```
+
+#### 创建容器
+
+##### 单机版
+
+```bash
+docker run -d  --name nacos -p 8848:8848 --env MODE=standalone  nacos/nacos-server
+```
+
+##### 搭建集群
+
+nacos集群需要使用mysql和nginx
+
+###### mysql
+
+```sql
+/* 
+   sql脚本, 注: 选择对应版本的sql
+   https://github.com/alibaba/nacos/blob/master/distribution/conf/nacos-mysql.sql
+*/
+/*
+ * Copyright 1999-2018 Alibaba Group Holding Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ 
+
+CREATE DATABASE nacos_config;
+USE nacos_config;
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = config_info   */
+/******************************************/
+CREATE TABLE `config_info` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `data_id` varchar(255) NOT NULL COMMENT 'data_id',
+  `group_id` varchar(255) DEFAULT NULL,
+  `content` longtext NOT NULL COMMENT 'content',
+  `md5` varchar(32) DEFAULT NULL COMMENT 'md5',
+  `gmt_create` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `gmt_modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+  `src_user` text COMMENT 'source user',
+  `src_ip` varchar(50) DEFAULT NULL COMMENT 'source ip',
+  `app_name` varchar(128) DEFAULT NULL,
+  `tenant_id` varchar(128) DEFAULT '' COMMENT '租户字段',
+  `c_desc` varchar(256) DEFAULT NULL,
+  `c_use` varchar(64) DEFAULT NULL,
+  `effect` varchar(64) DEFAULT NULL,
+  `type` varchar(64) DEFAULT NULL,
+  `c_schema` text,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_configinfo_datagrouptenant` (`data_id`,`group_id`,`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='config_info';
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = config_info_aggr   */
+/******************************************/
+CREATE TABLE `config_info_aggr` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `data_id` varchar(255) NOT NULL COMMENT 'data_id',
+  `group_id` varchar(255) NOT NULL COMMENT 'group_id',
+  `datum_id` varchar(255) NOT NULL COMMENT 'datum_id',
+  `content` longtext NOT NULL COMMENT '内容',
+  `gmt_modified` datetime NOT NULL COMMENT '修改时间',
+  `app_name` varchar(128) DEFAULT NULL,
+  `tenant_id` varchar(128) DEFAULT '' COMMENT '租户字段',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_configinfoaggr_datagrouptenantdatum` (`data_id`,`group_id`,`tenant_id`,`datum_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='增加租户字段';
+
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = config_info_beta   */
+/******************************************/
+CREATE TABLE `config_info_beta` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `data_id` varchar(255) NOT NULL COMMENT 'data_id',
+  `group_id` varchar(128) NOT NULL COMMENT 'group_id',
+  `app_name` varchar(128) DEFAULT NULL COMMENT 'app_name',
+  `content` longtext NOT NULL COMMENT 'content',
+  `beta_ips` varchar(1024) DEFAULT NULL COMMENT 'betaIps',
+  `md5` varchar(32) DEFAULT NULL COMMENT 'md5',
+  `gmt_create` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `gmt_modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+  `src_user` text COMMENT 'source user',
+  `src_ip` varchar(50) DEFAULT NULL COMMENT 'source ip',
+  `tenant_id` varchar(128) DEFAULT '' COMMENT '租户字段',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_configinfobeta_datagrouptenant` (`data_id`,`group_id`,`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='config_info_beta';
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = config_info_tag   */
+/******************************************/
+CREATE TABLE `config_info_tag` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `data_id` varchar(255) NOT NULL COMMENT 'data_id',
+  `group_id` varchar(128) NOT NULL COMMENT 'group_id',
+  `tenant_id` varchar(128) DEFAULT '' COMMENT 'tenant_id',
+  `tag_id` varchar(128) NOT NULL COMMENT 'tag_id',
+  `app_name` varchar(128) DEFAULT NULL COMMENT 'app_name',
+  `content` longtext NOT NULL COMMENT 'content',
+  `md5` varchar(32) DEFAULT NULL COMMENT 'md5',
+  `gmt_create` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `gmt_modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+  `src_user` text COMMENT 'source user',
+  `src_ip` varchar(50) DEFAULT NULL COMMENT 'source ip',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_configinfotag_datagrouptenanttag` (`data_id`,`group_id`,`tenant_id`,`tag_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='config_info_tag';
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = config_tags_relation   */
+/******************************************/
+CREATE TABLE `config_tags_relation` (
+  `id` bigint(20) NOT NULL COMMENT 'id',
+  `tag_name` varchar(128) NOT NULL COMMENT 'tag_name',
+  `tag_type` varchar(64) DEFAULT NULL COMMENT 'tag_type',
+  `data_id` varchar(255) NOT NULL COMMENT 'data_id',
+  `group_id` varchar(128) NOT NULL COMMENT 'group_id',
+  `tenant_id` varchar(128) DEFAULT '' COMMENT 'tenant_id',
+  `nid` bigint(20) NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`nid`),
+  UNIQUE KEY `uk_configtagrelation_configidtag` (`id`,`tag_name`,`tag_type`),
+  KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='config_tag_relation';
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = group_capacity   */
+/******************************************/
+CREATE TABLE `group_capacity` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `group_id` varchar(128) NOT NULL DEFAULT '' COMMENT 'Group ID，空字符表示整个集群',
+  `quota` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '配额，0表示使用默认值',
+  `usage` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '使用量',
+  `max_size` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '单个配置大小上限，单位为字节，0表示使用默认值',
+  `max_aggr_count` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '聚合子配置最大个数，，0表示使用默认值',
+  `max_aggr_size` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '单个聚合数据的子配置大小上限，单位为字节，0表示使用默认值',
+  `max_history_count` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '最大变更历史数量',
+  `gmt_create` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `gmt_modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_group_id` (`group_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='集群、各Group容量信息表';
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = his_config_info   */
+/******************************************/
+CREATE TABLE `his_config_info` (
+  `id` bigint(64) unsigned NOT NULL,
+  `nid` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `data_id` varchar(255) NOT NULL,
+  `group_id` varchar(128) NOT NULL,
+  `app_name` varchar(128) DEFAULT NULL COMMENT 'app_name',
+  `content` longtext NOT NULL,
+  `md5` varchar(32) DEFAULT NULL,
+  `gmt_create` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `gmt_modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `src_user` text,
+  `src_ip` varchar(50) DEFAULT NULL,
+  `op_type` char(10) DEFAULT NULL,
+  `tenant_id` varchar(128) DEFAULT '' COMMENT '租户字段',
+  PRIMARY KEY (`nid`),
+  KEY `idx_gmt_create` (`gmt_create`),
+  KEY `idx_gmt_modified` (`gmt_modified`),
+  KEY `idx_did` (`data_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='多租户改造';
+
+
+/******************************************/
+/*   数据库全名 = nacos_config   */
+/*   表名称 = tenant_capacity   */
+/******************************************/
+CREATE TABLE `tenant_capacity` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `tenant_id` varchar(128) NOT NULL DEFAULT '' COMMENT 'Tenant ID',
+  `quota` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '配额，0表示使用默认值',
+  `usage` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '使用量',
+  `max_size` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '单个配置大小上限，单位为字节，0表示使用默认值',
+  `max_aggr_count` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '聚合子配置最大个数',
+  `max_aggr_size` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '单个聚合数据的子配置大小上限，单位为字节，0表示使用默认值',
+  `max_history_count` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '最大变更历史数量',
+  `gmt_create` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `gmt_modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='租户容量信息表';
+
+
+CREATE TABLE `tenant_info` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `kp` varchar(128) NOT NULL COMMENT 'kp',
+  `tenant_id` varchar(128) default '' COMMENT 'tenant_id',
+  `tenant_name` varchar(128) default '' COMMENT 'tenant_name',
+  `tenant_desc` varchar(256) DEFAULT NULL COMMENT 'tenant_desc',
+  `create_source` varchar(32) DEFAULT NULL COMMENT 'create_source',
+  `gmt_create` bigint(20) NOT NULL COMMENT '创建时间',
+  `gmt_modified` bigint(20) NOT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tenant_info_kptenantid` (`kp`,`tenant_id`),
+  KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='tenant_info';
+
+CREATE TABLE `users` (
+	`username` varchar(50) NOT NULL PRIMARY KEY,
+	`password` varchar(500) NOT NULL,
+	`enabled` boolean NOT NULL
+);
+
+CREATE TABLE `roles` (
+	`username` varchar(50) NOT NULL,
+	`role` varchar(50) NOT NULL,
+	UNIQUE INDEX `idx_user_role` (`username` ASC, `role` ASC) USING BTREE
+);
+
+CREATE TABLE `permissions` (
+    `role` varchar(50) NOT NULL,
+    `resource` varchar(255) NOT NULL,
+    `action` varchar(8) NOT NULL,
+    UNIQUE INDEX `uk_role_permission` (`role`,`resource`,`action`) USING BTREE
+);
+
+INSERT INTO users (username, password, enabled) VALUES ('nacos', '$2a$10$EuWPZHzz32dJN7jexM34MOeYirDdFAZm2kuWj7VEOJhhZkDrxfvUu', TRUE);
+
+INSERT INTO roles (username, role) VALUES ('nacos', 'ROLE_ADMIN');
+```
+
+###### 创建节点
+
+```bash
+docker run -d  --name nacos1 -p 8848:8848 -v D:\env\docker\nacos\config:/home/nacos/conf  nacos/nacos-server
+docker run -d  --name nacos2 -p 8849:8848 -v D:\env\docker\nacos\config:/home/nacos/conf  nacos/nacos-server
+docker run -d  --name nacos3 -p 8850:8848 -v D:\env\docker\nacos\config:/home/nacos/conf  nacos/nacos-server
+```
+
+###### 配置文件
+
+application.propterties
+
+```properties
+#
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+#*************** Spring Boot Related Configurations ***************#
+### Default web context path:
+server.servlet.contextPath=/nacos
+### Default web server port:
+server.port=8848
+
+#*************** Network Related Configurations ***************#
+### If prefer hostname over ip for Nacos server addresses in cluster.conf:
+# nacos.inetutils.prefer-hostname-over-ip=false
+
+### Specify local server's IP:
+# nacos.inetutils.ip-address=
+
+
+#*************** Config Module Related Configurations ***************#
+### If use MySQL as datasource:
+spring.datasource.platform=mysql
+### Count of DB:
+db.num=1
+### Connect URL of DB: 数据库地址为docker内部地址
+db.url.0=jdbc:mysql://172.17.0.3:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC
+db.user.0=root
+db.password.0=123456
+
+### Connection pool configuration: hikariCP
+db.pool.config.connectionTimeout=30000
+db.pool.config.validationTimeout=10000
+db.pool.config.maximumPoolSize=20
+db.pool.config.minimumIdle=2
+
+#*************** Naming Module Related Configurations ***************#
+### Data dispatch task execution period in milliseconds: Will removed on v2.1.X, replace with nacos.core.protocol.distro.data.sync.delayMs
+# nacos.naming.distro.taskDispatchPeriod=200
+
+### Data count of batch sync task: Will removed on v2.1.X. Deprecated
+# nacos.naming.distro.batchSyncKeyCount=1000
+
+### Retry delay in milliseconds if sync task failed: Will removed on v2.1.X, replace with nacos.core.protocol.distro.data.sync.retryDelayMs
+# nacos.naming.distro.syncRetryDelay=5000
+
+### If enable data warmup. If set to false, the server would accept request without local data preparation:
+# nacos.naming.data.warmup=true
+
+### If enable the instance auto expiration, kind like of health check of instance:
+# nacos.naming.expireInstance=true
+
+### will be removed and replaced by `nacos.naming.clean` properties
+nacos.naming.empty-service.auto-clean=true
+nacos.naming.empty-service.clean.initial-delay-ms=50000
+nacos.naming.empty-service.clean.period-time-ms=30000
+
+### Add in 2.0.0
+### The interval to clean empty service, unit: milliseconds.
+# nacos.naming.clean.empty-service.interval=60000
+
+### The expired time to clean empty service, unit: milliseconds.
+# nacos.naming.clean.empty-service.expired-time=60000
+
+### The interval to clean expired metadata, unit: milliseconds.
+# nacos.naming.clean.expired-metadata.interval=5000
+
+### The expired time to clean metadata, unit: milliseconds.
+# nacos.naming.clean.expired-metadata.expired-time=60000
+
+### The delay time before push task to execute from service changed, unit: milliseconds.
+# nacos.naming.push.pushTaskDelay=500
+
+### The timeout for push task execute, unit: milliseconds.
+# nacos.naming.push.pushTaskTimeout=5000
+
+### The delay time for retrying failed push task, unit: milliseconds.
+# nacos.naming.push.pushTaskRetryDelay=1000
+
+### Since 2.0.3
+### The expired time for inactive client, unit: milliseconds.
+# nacos.naming.client.expired.time=180000
+
+#*************** CMDB Module Related Configurations ***************#
+### The interval to dump external CMDB in seconds:
+# nacos.cmdb.dumpTaskInterval=3600
+
+### The interval of polling data change event in seconds:
+# nacos.cmdb.eventTaskInterval=10
+
+### The interval of loading labels in seconds:
+# nacos.cmdb.labelTaskInterval=300
+
+### If turn on data loading task:
+# nacos.cmdb.loadDataAtStart=false
+
+
+#*************** Metrics Related Configurations ***************#
+### Metrics for prometheus
+#management.endpoints.web.exposure.include=*
+
+### Metrics for elastic search
+management.metrics.export.elastic.enabled=false
+#management.metrics.export.elastic.host=http://localhost:9200
+
+### Metrics for influx
+management.metrics.export.influx.enabled=false
+#management.metrics.export.influx.db=springboot
+#management.metrics.export.influx.uri=http://localhost:8086
+#management.metrics.export.influx.auto-create-db=true
+#management.metrics.export.influx.consistency=one
+#management.metrics.export.influx.compressed=true
+
+#*************** Access Log Related Configurations ***************#
+### If turn on the access log:
+server.tomcat.accesslog.enabled=true
+
+### The access log pattern:
+server.tomcat.accesslog.pattern=%h %l %u %t "%r" %s %b %D %{User-Agent}i %{Request-Source}i
+
+### The directory of access log:
+server.tomcat.basedir=
+
+#*************** Access Control Related Configurations ***************#
+### If enable spring security, this option is deprecated in 1.2.0:
+#spring.security.enabled=false
+
+### The ignore urls of auth, is deprecated in 1.2.0:
+nacos.security.ignore.urls=/,/error,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.ico,/console-ui/public/**,/v1/auth/**,/v1/console/health/**,/actuator/**,/v1/console/server/**
+
+### The auth system to use, currently only 'nacos' and 'ldap' is supported:
+nacos.core.auth.system.type=nacos
+
+### If turn on auth system:
+nacos.core.auth.enabled=false
+
+### worked when nacos.core.auth.system.type=ldap，{0} is Placeholder,replace login username
+# nacos.core.auth.ldap.url=ldap://localhost:389
+# nacos.core.auth.ldap.userdn=cn={0},ou=user,dc=company,dc=com
+
+### The token expiration in seconds:
+nacos.core.auth.default.token.expire.seconds=18000
+
+### The default token:
+nacos.core.auth.default.token.secret.key=SecretKey012345678901234567890123456789012345678901234567890123456789
+
+### Turn on/off caching of auth information. By turning on this switch, the update of auth information would have a 15 seconds delay.
+nacos.core.auth.caching.enabled=true
+
+### Since 1.4.1, Turn on/off white auth for user-agent: nacos-server, only for upgrade from old version.
+nacos.core.auth.enable.userAgentAuthWhite=false
+
+### Since 1.4.1, worked when nacos.core.auth.enabled=true and nacos.core.auth.enable.userAgentAuthWhite=false.
+### The two properties is the white list for auth and used by identity the request from other server.
+nacos.core.auth.server.identity.key=serverIdentity
+nacos.core.auth.server.identity.value=security
+
+#*************** Istio Related Configurations ***************#
+### If turn on the MCP server:
+nacos.istio.mcp.server.enabled=false
+
+#*************** Core Related Configurations ***************#
+
+### set the WorkerID manually
+# nacos.core.snowflake.worker-id=
+
+### Member-MetaData
+# nacos.core.member.meta.site=
+# nacos.core.member.meta.adweight=
+# nacos.core.member.meta.weight=
+
+### MemberLookup
+### Addressing pattern category, If set, the priority is highest
+# nacos.core.member.lookup.type=[file,address-server]
+## Set the cluster list with a configuration file or command-line argument
+# nacos.member.list=192.168.16.101:8847?raft_port=8807,192.168.16.101?raft_port=8808,192.168.16.101:8849?raft_port=8809
+## for AddressServerMemberLookup
+# Maximum number of retries to query the address server upon initialization
+# nacos.core.address-server.retry=5
+## Server domain name address of [address-server] mode
+# address.server.domain=jmenv.tbsite.net
+## Server port of [address-server] mode
+# address.server.port=8080
+## Request address of [address-server] mode
+# address.server.url=/nacos/serverlist
+
+#*************** JRaft Related Configurations ***************#
+
+### Sets the Raft cluster election timeout, default value is 5 second
+# nacos.core.protocol.raft.data.election_timeout_ms=5000
+### Sets the amount of time the Raft snapshot will execute periodically, default is 30 minute
+# nacos.core.protocol.raft.data.snapshot_interval_secs=30
+### raft internal worker threads
+# nacos.core.protocol.raft.data.core_thread_num=8
+### Number of threads required for raft business request processing
+# nacos.core.protocol.raft.data.cli_service_thread_num=4
+### raft linear read strategy. Safe linear reads are used by default, that is, the Leader tenure is confirmed by heartbeat
+# nacos.core.protocol.raft.data.read_index_type=ReadOnlySafe
+### rpc request timeout, default 5 seconds
+# nacos.core.protocol.raft.data.rpc_request_timeout_ms=5000
+
+#*************** Distro Related Configurations ***************#
+
+### Distro data sync delay time, when sync task delayed, task will be merged for same data key. Default 1 second.
+# nacos.core.protocol.distro.data.sync.delayMs=1000
+
+### Distro data sync timeout for one sync data, default 3 seconds.
+# nacos.core.protocol.distro.data.sync.timeoutMs=3000
+
+### Distro data sync retry delay time when sync data failed or timeout, same behavior with delayMs, default 3 seconds.
+# nacos.core.protocol.distro.data.sync.retryDelayMs=3000
+
+### Distro data verify interval time, verify synced data whether expired for a interval. Default 5 seconds.
+# nacos.core.protocol.distro.data.verify.intervalMs=5000
+
+### Distro data verify timeout for one verify, default 3 seconds.
+# nacos.core.protocol.distro.data.verify.timeoutMs=3000
+
+### Distro data load retry delay when load snapshot data failed, default 30 seconds.
+# nacos.core.protocol.distro.data.load.retryDelayMs=30000
+```
+
+cluster.conf
+
+```conf
+172.17.0.2 8848
+172.17.0.4 8848
+```
+
+nacos-logback.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright 1999-2018 Alibaba Group Holding Ltd.
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~      http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<configuration scan="true" scanPeriod="10 seconds">
+
+    <springProperty scope="context" name="logPath" source="nacos.logs.path" defaultValue="${nacos.home}/logs"/>
+    <property name="LOG_HOME" value="${logPath}"/>
+
+    <appender name="cmdb-main"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${nacos.home}/logs/cmdb-main.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${nacos.home}/logs/cmdb-main.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="naming-server"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/naming-server.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/naming-server.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="async-naming-server" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="naming-server"/>
+    </appender>
+
+    <appender name="naming-raft"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/naming-raft.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/naming-raft.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="async-naming-raft" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="naming-raft"/>
+    </appender>
+
+
+    <appender name="naming-distro"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/naming-distro.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/naming-distro.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="async-naming-distro" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="naming-distro"/>
+    </appender>
+
+    <appender name="naming-event"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/naming-event.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/naming-event.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="async-naming-event" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="naming-event"/>
+    </appender>
+
+    <appender name="naming-push"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/naming-push.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/naming-push.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="naming-rt"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/naming-rt.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/naming-rt.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%msg%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="naming-performance"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/naming-performance.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/naming-performance.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--config module logback config-->
+    <appender name="dumpFile"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-dump.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-dump.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="pullFile"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-pull.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-pull.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>20MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>128MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="fatalFile"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-fatal.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-fatal.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>20MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>128MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="memoryFile"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-memory.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-memory.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>20MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>128MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="pullCheckFile"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-pull-check.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-pull-check.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%msg%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="clientLog"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-client-request.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-client-request.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date|%msg%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="traceLog"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-trace.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-trace.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date|%msg%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="notifyLog"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-notify.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-notify.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>1GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="startLog"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/config-server.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/config-server.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>512MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="rootFile"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/nacos.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/nacos.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>512MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="nacos-address"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/nacos-address.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/nacos-address.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="istio-main"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/istio-main.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/istio-main.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="core-auth"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/core-auth.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/core-auth.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="protocol-raft"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/protocol-raft.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/protocol-raft.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="protocol-distro"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/protocol-distro.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/protocol-distro.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="nacos-cluster"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/nacos-cluster.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/nacos-cluster.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="alipay-jraft"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/alipay-jraft.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/alipay-jraft.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!--TPS control -->
+    <appender name="tps-control"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/tps-control.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/tps-control.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="tps-control-digest"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/tps-control-digest.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/tps-control-digest.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="tps-control-detail"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/tps-control-detail.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/tps-control-detail.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <appender name="remote"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/remote.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/remote.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="remote-digest"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/remote-digest.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/remote-digest.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="remote-push"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/remote-push.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/remote-push.log.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>2GB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>7GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%date %level %msg%n%n</Pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <logger name="com.alibaba.nacos.address.main" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="nacos-address"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.cmdb.main" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="cmdb-main"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.remote" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="remote"/>
+    </logger>
+    <logger name="com.alibaba.nacos.core.remote.push" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="remote-push"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.remote.digest" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="remote-digest"/>
+    </logger>
+
+    <!-- TPS Control-->
+    <logger name="com.alibaba.nacos.core.remote.control.digest" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="tps-control-digest"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.remote.control.detail" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="tps-control-detail"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.remote.control" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="tps-control"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.naming.main" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="async-naming-server"/>
+    </logger>
+    <logger name="com.alibaba.nacos.naming.raft" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="async-naming-raft"/>
+    </logger>
+    <logger name="com.alibaba.nacos.naming.distro" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="async-naming-distro"/>
+    </logger>
+    <logger name="com.alibaba.nacos.naming.event" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="async-naming-event"/>
+    </logger>
+    <logger name="com.alibaba.nacos.naming.push" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="naming-push"/>
+    </logger>
+    <logger name="com.alibaba.nacos.naming.rt" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="naming-rt"/>
+    </logger>
+    <logger name="com.alibaba.nacos.naming.performance" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="naming-performance"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.config.dumpLog" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="dumpFile"/>
+    </logger>
+    <logger name="com.alibaba.nacos.config.pullLog" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="pullFile"/>
+    </logger>
+    <logger name="com.alibaba.nacos.config.pullCheckLog" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="pullCheckFile"/>
+    </logger>
+    <logger name="com.alibaba.nacos.config.fatal" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="fatalFile"/>
+    </logger>
+    <logger name="com.alibaba.nacos.config.monitorLog" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="memoryFile"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.config.clientLog" additivity="false">
+        <level value="info"/>
+        <appender-ref ref="clientLog"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.config.notifyLog" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="notifyLog"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.config.traceLog" additivity="false">
+        <level value="info"/>
+        <appender-ref ref="traceLog"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.config.startLog" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="startLog"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.istio.main" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="istio-main"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.auth" additivity="false">
+        <level value="DEBUG"/>
+        <appender-ref ref="core-auth"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.protocol.raft" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="protocol-raft"/>
+    </logger>
+
+    <logger name="com.alipay.sofa.jraft" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="alipay-jraft"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.protocol.distro" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="protocol-distro"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.core.cluster" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="nacos-cluster"/>
+    </logger>
+
+    <springProfile name="standalone">
+        <logger name="org.springframework">
+            <appender-ref ref="CONSOLE"/>
+            <level value="INFO"/>
+        </logger>
+
+        <logger name="org.apache.catalina.startup.DigesterFactory">
+            <appender-ref ref="CONSOLE"/>
+            <level value="INFO"/>
+        </logger>
+
+        <logger name="org.apache.catalina.util.LifecycleBase">
+            <appender-ref ref="CONSOLE"/>
+            <level value="ERROR"/>
+        </logger>
+
+        <logger name="org.apache.coyote.http11.Http11NioProtocol">
+            <appender-ref ref="CONSOLE"/>
+            <level value="WARN"/>
+        </logger>
+
+        <logger name="org.apache.tomcat.util.net.NioSelectorPool">
+            <appender-ref ref="CONSOLE"/>
+            <level value="WARN"/>
+        </logger>
+    </springProfile>
+
+    <logger name="com.alibaba.nacos.core.listener.StartingApplicationListener">
+        <appender-ref ref="CONSOLE"/>
+        <level value="INFO"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.common.notify.NotifyCenter">
+        <appender-ref ref="CONSOLE"/>
+        <level value="INFO"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.sys.file.WatchFileCenter">
+        <appender-ref ref="CONSOLE"/>
+        <level value="INFO"/>
+    </logger>
+
+    <logger name="com.alibaba.nacos.common.executor.ThreadPoolManager">
+        <appender-ref ref="CONSOLE"/>
+        <level value="INFO"/>
+    </logger>
+
+    <root>
+        <level value="INFO"/>
+        <appender-ref ref="rootFile"/>
+    </root>
+</configuration>
+```
+
+
+
+
+
+#### 控制台
+
+```bash
+# 默认账号密码 nacos/nacos
+http://localhost:8848/nacos
+```
