@@ -1120,3 +1120,24 @@ docker pull nginx
 docker run --name nginx -d -p 80:80 -v D:\env\docker\nginx\conf\default.conf:/etc/nginx/conf.d/default.conf nginx
 ```
 
+### Sentinel
+
+#### 下载
+
+```bash
+docker pull bladex/sentinel-dashboard
+```
+
+#### 运行
+
+```bash
+docker run --name sentinel -d -p 8858:8858 bladex/sentinel-dashboard
+```
+
+##### 访问路径
+
+```bash
+# 账号/密码  sentinel/sentinel
+http://localhost:8858
+```
+
