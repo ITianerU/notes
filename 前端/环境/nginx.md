@@ -63,9 +63,10 @@ upstream tomcat_8111_8222{   # 名字随便 写在配置文件server{}的外面
     server  127.0.0.1:8111  weight=1; # 第一个tomcat的地址
     server  127.0.0.1:8222 weight=2; # wight表示权重，数值越大，被分配的请求越多
 }
-
-location / {   # 替换上面反向代理的配置
-    proxy_pass http://tomcat_8111_8222; # 服务名为上面自定义的名称
+server {
+    location / {   # 替换上面反向代理的配置
+        proxy_pass http://tomcat_8111_8222; # 服务名为上面自定义的名称
+    }
 }
 ```
 
