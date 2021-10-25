@@ -1141,3 +1141,245 @@ docker run --name sentinel -d -p 8858:8858 bladex/sentinel-dashboard
 http://localhost:8858
 ```
 
+### Seata
+
+#### 使用docker-compose
+
+##### 创建项目
+
+- config(文件夹)
+
+  - file.conf(文件)
+
+    ```properties
+    store{
+      # 事务日志存储模块, 有file和db两种
+      # mode="file"
+    
+    #   file{
+    #     dir="sessionStore"
+    #   }
+      # 这里使用数据库模式
+        mode="db"
+    
+        db {
+            ## the implement of javax.sql.DataSource, such as DruidDataSource(druid)/BasicDataSource(dbcp) etc.
+            datasource = "seata"
+            ## mysql/oracle/postgresql/h2/oceanbase etc.
+            dbType = "mysql"
+            driverClassName = "com.mysql.cj.jdbc.Driver"
+            # mysql:3306  mysql是容器名
+            url = "jdbc:mysql://mysql:3306/seata"
+            user = "root"
+            password = "123456"
+            minConn = 5
+            maxConn = 30
+            globalTable = "global_table"
+            branchTable = "branch_table"
+            lockTable = "lock_table"
+            queryLimit = 100
+            maxWait = 5000
+        }
+    }
+    
+    
+    transport {
+      # tcp udt unix-domain-socket
+      type = "TCP"
+      #NIO NATIVE
+      server = "NIO"
+      #enable heartbeat
+      heartbeat = true
+      # the client batch send request enable
+      enableClientBatchSendRequest = true
+      #thread factory for netty
+      threadFactory {
+        bossThreadPrefix = "NettyBoss"
+        workerThreadPrefix = "NettyServerNIOWorker"
+        serverExecutorThread-prefix = "NettyServerBizHandler"
+        shareBossWorker = false
+        clientSelectorThreadPrefix = "NettyClientSelector"
+        clientSelectorThreadSize = 1
+        clientWorkerThreadPrefix = "NettyClientWorkerThread"
+        # netty boss thread size,will not be used for UDT
+        bossThreadSize = 1
+        #auto default pin or 8
+        workerThreadSize = "default"
+      }
+      shutdown {
+        # when destroy server, wait seconds
+        wait = 3
+      }
+      serialization = "seata"
+      compressor = "none"
+    }
+    
+    service {
+      #transaction service group mapping
+      # my_test_tx_group是自定义的名, 需要和项目中配置的名相同
+      vgroupMapping.my_test_tx_group = "default"
+      #only support when registry.type=file, please don't set multiple addresses
+      default.grouplist = "127.0.0.1:8091"
+      #degrade, current not support
+      enableDegrade = false
+      #disable seata
+      disableGlobalTransaction = false
+    }
+    
+    client {
+      rm {
+        asyncCommitBufferLimit = 10000
+        lock {
+          retryInterval = 10
+          retryTimes = 30
+          retryPolicyBranchRollbackOnConflict = true
+        }
+        reportRetryCount = 5
+        tableMetaCheckEnable = false
+        reportSuccessEnable = false
+      }
+      tm {
+        commitRetryCount = 5
+        rollbackRetryCount = 5
+      }
+      undo {
+        dataValidation = true
+        logSerialization = "jackson"
+        logTable = "undo_log"
+      }
+      log {
+        exceptionRate = 100
+      }
+    }
+    ```
+
+  - registry.conf(文件)
+
+    ```properties
+    registry {
+      # file 、nacos 、eureka、redis、zk、consul、etcd3、sofa
+      type = "nacos"
+    
+      nacos {
+        application = "seata-server"
+        # 指定nacos地址, nginx是容器名
+        serverAddr = "nginx:8851"
+        # nacos的分组名
+        group = "DEFAULT_GROUP"
+        cluster = "default"
+        namespace = ""
+        username = "nacos"
+        password = "nacos"
+      }
+      eureka {
+        serviceUrl = "http://localhost:8761/eureka"
+        weight = "1"
+      }
+      redis {
+        serverAddr = "localhost:6379"
+        db = "0"
+        password = ""
+        timeout = "0"
+      }
+      zk {
+        serverAddr = "127.0.0.1:2181"
+        sessionTimeout = 6000
+        connectTimeout = 2000
+        username = ""
+        password = ""
+      }
+      consul {
+        serverAddr = "127.0.0.1:8500"
+      }
+      etcd3 {
+        serverAddr = "http://localhost:2379"
+      }
+      sofa {
+        serverAddr = "127.0.0.1:9603"
+        region = "DEFAULT_ZONE"
+        datacenter = "DefaultDataCenter"
+        group = "SEATA_GROUP"
+        addressWaitTime = "3000"
+      }
+      file {
+        name = "file.conf"
+      }
+    }
+    
+    # config{
+    #
+    #   type = "file"
+    #
+    #   file{
+    #   # 容器内部内部配置文件的位置
+    #     name = "file:/root/seata-config/file.conf"
+    #   }
+    # }
+    
+    config {
+      # file、nacos 、apollo、zk、consul、etcd3、springCloudConfig
+      type = "file"
+    
+      nacos {
+        serverAddr = "localhost"
+        namespace = ""
+        group = "SEATA_GROUP"
+        username = ""
+        password = ""
+      }
+      consul {
+        serverAddr = "127.0.0.1:8500"
+      }
+      apollo {
+        appId = "seata-server"
+        apolloMeta = "http://192.168.1.204:8801"
+        namespace = "application"
+      }
+      zk {
+        serverAddr = "127.0.0.1:2181"
+        sessionTimeout = 6000
+        connectTimeout = 2000
+        username = ""
+        password = ""
+      }
+      etcd3 {
+        serverAddr = "http://localhost:2379"
+      }
+      file {
+      	# 指定容器中file.conf地址
+        name = "file:/seata-server/resources/file.conf"
+      }
+    }
+    ```
+
+- docker-compose.yml
+
+  ```yml
+  version: "3"
+  services:
+    seata-server:
+      container_name: seata-server
+      image: seataio/seata-server:1.4.2
+      hostname: seata-server
+      ports:
+        - "8091:8091"
+      environment:
+        - SEATA_PORT=8091
+        - STORE_MODE=file
+      volumes:
+        - ./config/file.conf:/seata-server/resources/file.conf
+        - ./config/registry.conf:/seata-server/resources/registry.conf
+  ```
+
+##### 创建容器
+
+```bash
+docker-compose -f docker-compose.yml up
+```
+
+##### SQL文件
+
+```text
+SQL文件在源码包中的script文件夹下
+```
+
