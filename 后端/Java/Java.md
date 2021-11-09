@@ -240,6 +240,56 @@ for (int [] ints : array3){
   import static java.lang.Math.random
   ```
 
+## 枚举
+
+```java
+public enum CountryEnum {
+
+    ONE(1, "齐"), TWO(2, "秦");
+
+    private Integer retCode;
+    private String retMessage;
+
+    public Integer getRetCode() {
+        return retCode;
+    }
+
+    public String getRetMessage() {
+        return retMessage;
+    }
+
+    CountryEnum(Integer retCode, String retMessage){
+        this.retCode = retCode;
+        this.retMessage = retMessage;
+    }
+    
+    // 获取指定的值
+    public static CountryEnum forEach_countryEnum(int index){
+        CountryEnum[] array = CountryEnum.values();
+        for (CountryEnum element : array){
+            if(index == element.getRetCode()){
+                return element;
+            }
+        }
+        return null;
+    }
+}
+```
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(CountryEnum.ONE);
+        System.out.println(CountryEnum.TWO.getRetCode());
+        System.out.println(CountryEnum.TWO.getRetMessage());
+    }
+}
+```
+
+
+
+
+
 # 高级
 
 ## 内部类

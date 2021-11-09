@@ -3982,7 +3982,7 @@ public class ApplicationContextConfig {
 @RequestMapping("config")
 public class ConfigClientController {
 
-    @Value("${config.ingo}")
+    @Value("${config.info}")
     private String configInfo;
 
     @GetMapping("info")
